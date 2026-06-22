@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>빅플래너 PM 수수료 산정</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="topbar" aria-label="페이지 상단">
+        <div>
+          <p class="eyebrow">Bigplanner Partners</p>
+          <h1>PM 수수료 산정</h1>
+        </div>
+        <div class="top-actions">
+          <button class="ghost-button" id="resetProject" type="button">초기화</button>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="견적 요약">
+        <article class="summary-tile">
+          <span>기본 PM비</span>
+          <strong id="stickyBaseAmount">0원</strong>
+        </article>
+        <article class="summary-tile">
+          <span>사업비 연동</span>
+          <strong id="stickyLinkedAmount">0원</strong>
+        </article>
+        <article class="summary-tile">
+          <span>옵션·가산</span>
+          <strong id="stickyOptionAmount">0원</strong>
+        </article>
+        <article class="summary-tile accent">
+          <span>제안금액</span>
+          <strong id="stickyGrandAmount">0원</strong>
+        </article>
+      </section>
+
+      <section class="reference-section" aria-label="산정 기준">
+        <div class="section-head">
+          <h2>산정 기준</h2>
+        </div>
+        <div class="reference-list">
+          <article>
+            <strong>기본 산식</strong>
+            <p>기본 PM비 + 사업비 연동 보수 + 참여강도 가산 + 옵션업무비 + 성과보수 + 실비 + VAT</p>
+          </article>
+          <article>
+            <strong>관리대상 사업비</strong>
+            <p>건축 PM은 토지비·금융비·매각가를 제외하고 설계, 인허가, 철거, 시공, 인테리어, 부담금, 예비비 중심으로 산정합니다.</p>
+          </article>
+          <article>
+            <strong>최소 수수료</strong>
+            <p>전 과정 PM은 소규모 프로젝트라도 2,500만~3,000만원을 하한선으로 둡니다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="project-area" aria-label="프로젝트 수수료 산정">
+        <div class="table-shell">
+          <div class="table-header">
+            <h2>프로젝트 견적</h2>
+            <label class="switch">
+              <input id="includeVat" type="checkbox" checked />
+              <span>VAT 포함 표시</span>
+            </label>
+          </div>
+          <div id="projectRoot"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <template id="projectTemplate">
+      <article class="project-card">
+        <div class="project-card__top project-card__top--single">
+          <div class="project-title-group">
+            <label>
+              <span>프로젝트명</span>
+              <input class="project-name" type="text" value="프로젝트 1" />
+            </label>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label class="visually-hidden">
+            <span>패키지</span>
+            <select class="package-select"></select>
+          </label>
+          <label class="cost-field">
+            <span>관리대상 사업비</span>
+            <div class="cost-control">
+              <div class="money-input">
+                <input class="managed-cost" type="number" min="0" step="10000000" />
+                <em>원</em>
+              </div>
+              <strong class="cost-readable">0원</strong>
+              <div class="cost-buttons" aria-label="사업비 빠른 조정">
+                <button class="cost-step" type="button" data-step="-100000000">-1억</button>
+                <button class="cost-step" type="button" data-step="-10000000">-1천만</button>
+                <button class="cost-step" type="button" data-step="10000000">+1천만</button>
+                <button class="cost-step" type="button" data-step="100000000">+1억</button>
+              </div>
+            </div>
+          </label>
+          <label>
+            <span>기간</span>
+            <div class="unit-input">
+              <input class="duration-months" type="number" min="1" max="60" step="1" />
+              <em>개월</em>
+            </div>
+          </label>
+        </div>
+
+        <div class="diagnosis-block">
+          <div class="option-block__head">
+            <strong>프로젝트 진단</strong>
+            <span>답변 기준으로 패키지와 보강 옵션 추천</span>
+          </div>
+          <div class="diagnosis-grid">
+            <label>
+              <span>건축주 경험</span>
+              <select class="diagnosis-input" data-diagnosis="experience">
+                <option value="experienced">경험 있음</option>
+                <option value="some">일부 경험</option>
+                <option value="first">처음 진행</option>
+              </select>
+            </label>
+            <label>
+              <span>사업 목적</span>
+              <select class="diagnosis-input" data-diagnosis="purpose">
+                <option value="own">실사용 건물</option>
+                <option value="rental">임대 수익형</option>
+                <option value="sale">임대 후 매각</option>
+                <option value="precheck">매입 전 검토</option>
+              </select>
+            </label>
+            <label>
+              <span>현재 단계</span>
+              <select class="diagnosis-input" data-diagnosis="stage">
+                <option value="planning">기획 전/초기</option>
+                <option value="design">설계 진행 중</option>
+                <option value="bid">견적·시공사 선정</option>
+                <option value="construction">공사 진행 중</option>
+              </select>
+            </label>
+            <label>
+              <span>리스크 수준</span>
+              <select class="diagnosis-input" data-diagnosis="risk">
+                <option value="low">낮음</option>
+                <option value="medium">보통</option>
+                <option value="high">높음</option>
+              </select>
+            </label>
+            <label>
+              <span>금융 필요</span>
+              <select class="diagnosis-input" data-diagnosis="finance">
+                <option value="no">필요 없음</option>
+                <option value="yes">PF/대출 대응 필요</option>
+              </select>
+            </label>
+            <label>
+              <span>현장 관여</span>
+              <select class="diagnosis-input" data-diagnosis="site">
+                <option value="normal">월 2~4회</option>
+                <option value="weekly">주 1회 이상</option>
+                <option value="semi">주 2~3회 이상</option>
+              </select>
+            </label>
+          </div>
+          <div class="diagnosis-result">
+            <strong class="diagnosis-package">추천 패키지: 일반 관리형</strong>
+            <p class="diagnosis-reason">프로젝트 조건을 선택하면 추천 사유가 표시됩니다.</p>
+            <button class="ghost-button apply-diagnosis" type="button">추천 적용</button>
+          </div>
+        </div>
+
+        <div class="package-picker">
+          <div class="option-block__head">
+            <strong>패키지 선택</strong>
+            <span>프로젝트 성격에 맞는 범위를 선택</span>
+          </div>
+          <div class="package-card-grid"></div>
+        </div>
+
+        <div class="pm-task-block">
+          <div class="option-block__head">
+            <strong>기본 PM 업무 리스트</strong>
+            <span>선택한 패키지에 포함되는 세부 관리 업무</span>
+          </div>
+          <div class="pm-task-grid"></div>
+        </div>
+
+        <div class="option-block">
+          <div class="option-block__head">
+            <strong>옵션업무</strong>
+            <span>빠진 기본업무 보강 + 특수업무 선택</span>
+          </div>
+          <div class="option-grid"></div>
+        </div>
+
+        <div class="adjustment-grid">
+          <label>
+            <span>성과보수</span>
+            <div class="money-input">
+              <input class="success-fee" type="number" min="0" step="1000000" value="0" />
+              <em>원</em>
+            </div>
+          </label>
+          <label>
+            <span>실비</span>
+            <div class="money-input">
+              <input class="expense-fee" type="number" min="0" step="100000" value="0" />
+              <em>원</em>
+            </div>
+          </label>
+          <label>
+            <span>직접 조정</span>
+            <div class="money-input">
+              <input class="manual-adjustment" type="number" step="100000" value="0" />
+              <em>원</em>
+            </div>
+          </label>
+        </div>
+
+        <div class="result-grid">
+          <div>
+            <span>기본 PM비</span>
+            <strong class="base-fee">0원</strong>
+          </div>
+          <div>
+            <span>사업비 연동</span>
+            <strong class="linked-fee">0원</strong>
+          </div>
+          <div>
+            <span>옵션·가산</span>
+            <strong class="option-fee">0원</strong>
+          </div>
+          <div class="total-result">
+            <span>제안금액</span>
+            <strong class="project-total">0원</strong>
+          </div>
+        </div>
+        <p class="calculation-note"></p>
+
+        <div class="proposal-block">
+          <div class="option-block__head">
+            <strong>제안서/업무범위 별첨</strong>
+            <div class="inline-actions">
+              <button class="ghost-button proposal-generate" type="button">제안서 문구 작성</button>
+              <button class="ghost-button scope-generate" type="button">업무범위표 작성</button>
+            </div>
+          </div>
+          <textarea class="proposal-draft" readonly placeholder="제안서 문구 작성 버튼을 눌러 고객 설명용 문안을 생성하세요."></textarea>
+        </div>
+
+        <div class="contract-block">
+          <div class="option-block__head">
+            <strong>PM 계약서 초안</strong>
+            <button class="ghost-button contract-generate" type="button">계약서 작성</button>
+          </div>
+          <textarea class="contract-draft" readonly placeholder="패키지와 옵션을 선택한 뒤 계약서 작성 버튼을 눌러주세요."></textarea>
+        </div>
+      </article>
+    </template>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
