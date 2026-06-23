@@ -503,8 +503,8 @@ function getPackageOptionRule(packageKey) {
 }
 
 function readDiagnosis(card) {
-  return [...card.querySelectorAll(".diagnosis-input")].reduce((values, input) => {
-    values[input.dataset.diagnosis] = input.value;
+  return [...card.querySelectorAll(".diagnosis-choice.is-selected")].reduce((values, input) => {
+    values[input.dataset.diagnosis] = input.dataset.value;
     return values;
   }, {});
 }
@@ -1160,8 +1160,17 @@ function createProject(initialPackage = "standard") {
     card.querySelector(".contract-draft").value = buildContractDraft(card, result);
   });
 
-  fragment.querySelectorAll(".diagnosis-input").forEach((input) => {
-    input.addEventListener("change", () => updateDiagnosis(card));
+  fragment.querySelectorAll(".diagnosis-choice").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.classList.contains("is-selected")));
+    button.addEventListener("click", () => {
+      const group = button.closest(".diagnosis-group");
+      group.querySelectorAll(".diagnosis-choice").forEach((choice) => {
+        const selected = choice === button;
+        choice.classList.toggle("is-selected", selected);
+        choice.setAttribute("aria-pressed", String(selected));
+      });
+      updateDiagnosis(card);
+    });
   });
 
   fragment.querySelector(".apply-diagnosis").addEventListener("click", () => {

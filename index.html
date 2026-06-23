@@ -119,55 +119,112 @@
             <span>답변 기준으로 패키지와 보강 옵션 추천</span>
           </div>
           <div class="diagnosis-grid">
-            <label>
-              <span>건축주 경험</span>
-              <select class="diagnosis-input" data-diagnosis="experience">
-                <option value="experienced">경험 있음</option>
-                <option value="some">일부 경험</option>
-                <option value="first">처음 진행</option>
-              </select>
-            </label>
-            <label>
-              <span>사업 목적</span>
-              <select class="diagnosis-input" data-diagnosis="purpose">
-                <option value="own">실사용 건물</option>
-                <option value="rental">임대 수익형</option>
-                <option value="sale">임대 후 매각</option>
-                <option value="precheck">매입 전 검토</option>
-              </select>
-            </label>
-            <label>
-              <span>현재 단계</span>
-              <select class="diagnosis-input" data-diagnosis="stage">
-                <option value="planning">기획 전/초기</option>
-                <option value="design">설계 진행 중</option>
-                <option value="bid">견적·시공사 선정</option>
-                <option value="construction">공사 진행 중</option>
-              </select>
-            </label>
-            <label>
-              <span>리스크 수준</span>
-              <select class="diagnosis-input" data-diagnosis="risk">
-                <option value="low">낮음</option>
-                <option value="medium">보통</option>
-                <option value="high">높음</option>
-              </select>
-            </label>
-            <label>
-              <span>금융 필요</span>
-              <select class="diagnosis-input" data-diagnosis="finance">
-                <option value="no">필요 없음</option>
-                <option value="yes">PF/대출 대응 필요</option>
-              </select>
-            </label>
-            <label>
-              <span>현장 관여</span>
-              <select class="diagnosis-input" data-diagnosis="site">
-                <option value="normal">월 2~4회</option>
-                <option value="weekly">주 1회 이상</option>
-                <option value="semi">주 2~3회 이상</option>
-              </select>
-            </label>
+            <section class="diagnosis-group" data-diagnosis-group="experience">
+              <h3>건축주 경험</h3>
+              <div class="diagnosis-card-list">
+                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="experience" data-value="experienced">
+                  <strong>경험 있음</strong>
+                  <span>설계·시공 의사결정 경험이 있어 핵심 검토 중심으로 충분합니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="experience" data-value="some">
+                  <strong>일부 경험</strong>
+                  <span>문서 검토와 계약조건 체크를 보강하면 안정적입니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="experience" data-value="first">
+                  <strong>처음 진행</strong>
+                  <span>설계·견적·계약·현장 이슈를 넓게 관리하는 편이 안전합니다.</span>
+                </button>
+              </div>
+            </section>
+            <section class="diagnosis-group" data-diagnosis-group="purpose">
+              <h3>사업 목적</h3>
+              <div class="diagnosis-card-list">
+                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="purpose" data-value="own">
+                  <strong>실사용 건물</strong>
+                  <span>품질, 일정, 예산 균형을 중심으로 PM 범위를 잡습니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="purpose" data-value="rental">
+                  <strong>임대 수익형</strong>
+                  <span>임대 조건, 운영 준비, 수익성 검토를 함께 고려합니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="purpose" data-value="sale">
+                  <strong>임대 후 매각</strong>
+                  <span>PF, 임대, 매각자료 준비까지 개발 PM 성격이 강해집니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="purpose" data-value="precheck">
+                  <strong>매입 전 검토</strong>
+                  <span>본 PM 전 빠른 법규·예산·사업성 진단이 우선입니다.</span>
+                </button>
+              </div>
+            </section>
+            <section class="diagnosis-group" data-diagnosis-group="stage">
+              <h3>현재 단계</h3>
+              <div class="diagnosis-card-list">
+                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="stage" data-value="planning">
+                  <strong>기획 전/초기</strong>
+                  <span>목표, 범위, 예산 프레임과 마스터 일정을 잡는 단계입니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="design">
+                  <strong>설계 진행 중</strong>
+                  <span>설계 예산 적합성, 변경관리, 인허가 일정 관리가 중요합니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="bid">
+                  <strong>견적·시공사 선정</strong>
+                  <span>견적 비교, 입찰 패키지, 계약조건 검토가 핵심입니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="construction">
+                  <strong>공사 진행 중</strong>
+                  <span>공정, 기성, 변경, 품질 이슈를 빠르게 관리해야 합니다.</span>
+                </button>
+              </div>
+            </section>
+            <section class="diagnosis-group" data-diagnosis-group="risk">
+              <h3>리스크 수준</h3>
+              <div class="diagnosis-card-list">
+                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="risk" data-value="low">
+                  <strong>낮음</strong>
+                  <span>설계자와 시공사가 안정적이고 이슈 가능성이 낮습니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="risk" data-value="medium">
+                  <strong>보통</strong>
+                  <span>예산·계약·일정 관리를 정기적으로 확인하는 편이 좋습니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="risk" data-value="high">
+                  <strong>높음</strong>
+                  <span>공사비, 민원, 시공사 신뢰도, 인허가 난도가 걱정됩니다.</span>
+                </button>
+              </div>
+            </section>
+            <section class="diagnosis-group" data-diagnosis-group="finance">
+              <h3>금융 필요</h3>
+              <div class="diagnosis-card-list">
+                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="finance" data-value="no">
+                  <strong>필요 없음</strong>
+                  <span>일반 건축 PM 범위 안에서 비용·일정 관리를 봅니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="finance" data-value="yes">
+                  <strong>PF/대출 대응 필요</strong>
+                  <span>금융기관 자료, 기성, 수지표 대응을 별도로 봐야 합니다.</span>
+                </button>
+              </div>
+            </section>
+            <section class="diagnosis-group" data-diagnosis-group="site">
+              <h3>현장 관여</h3>
+              <div class="diagnosis-card-list">
+                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="site" data-value="normal">
+                  <strong>월 2~4회</strong>
+                  <span>일반 관리형 수준의 정기회의와 현장점검이 적합합니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="site" data-value="weekly">
+                  <strong>주 1회 이상</strong>
+                  <span>공정·기성·변경관리를 더 자주 확인해야 합니다.</span>
+                </button>
+                <button class="diagnosis-choice" type="button" data-diagnosis="site" data-value="semi">
+                  <strong>주 2~3회 이상</strong>
+                  <span>준상주 관리에 가까워 별도 월정액 검토가 필요합니다.</span>
+                </button>
+              </div>
+            </section>
           </div>
           <div class="diagnosis-result">
             <strong class="diagnosis-package">추천 패키지: 일반 관리형</strong>

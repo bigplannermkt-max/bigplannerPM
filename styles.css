@@ -429,8 +429,69 @@ select:focus {
 
 .diagnosis-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.diagnosis-group {
+  display: grid;
+  gap: 9px;
+}
+
+.diagnosis-group h3 {
+  margin: 0;
+  color: var(--green-dark);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.diagnosis-card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
+}
+
+.diagnosis-choice {
+  display: grid;
+  align-content: start;
+  min-height: 112px;
+  padding: 13px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.diagnosis-choice:hover,
+.diagnosis-choice:focus-visible {
+  border-color: rgba(18, 111, 76, 0.5);
+  box-shadow: 0 0 0 3px rgba(18, 111, 76, 0.1);
+  outline: none;
+}
+
+.diagnosis-choice strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.diagnosis-choice span {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.diagnosis-choice.is-selected {
+  background: #edf8f2;
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px var(--green), 0 6px 18px rgba(18, 111, 76, 0.08);
+}
+
+.diagnosis-choice.is-selected strong {
+  color: var(--green-dark);
 }
 
 .diagnosis-result {
@@ -835,7 +896,6 @@ select:focus {
 @media (max-width: 1100px) {
   .summary-grid,
   .reference-list,
-  .diagnosis-grid,
   .pm-task-phase__list,
   .result-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -873,7 +933,6 @@ select:focus {
   .summary-grid,
   .reference-list,
   .form-grid,
-  .diagnosis-grid,
   .adjustment-grid,
   .package-card-grid,
   .pm-task-phase__list,
@@ -884,6 +943,10 @@ select:focus {
 
   .cost-field {
     grid-column: auto;
+  }
+
+  .diagnosis-card-list {
+    grid-template-columns: 1fr;
   }
 
   .cost-buttons {
