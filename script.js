@@ -16,6 +16,8 @@ const packages = {
     rateRange: [0, 0],
     minimum: 300,
     intensity: "low",
+    baseWeight: 0.25,
+    rateWeight: 0,
     defaultMonths: 1,
     defaultCost: 500000000,
   },
@@ -31,6 +33,8 @@ const packages = {
     rateRange: [0.003, 0.005],
     minimum: 1500,
     intensity: "low",
+    baseWeight: 0.25,
+    rateWeight: 0.25,
     defaultMonths: 6,
     defaultCost: 800000000,
   },
@@ -46,6 +50,8 @@ const packages = {
     rateRange: [0.003, 0.006],
     minimum: 2500,
     intensity: "base",
+    baseWeight: 0.2,
+    rateWeight: 1 / 3,
     defaultMonths: 8,
     defaultCost: 1000000000,
   },
@@ -61,6 +67,8 @@ const packages = {
     rateRange: [0.004, 0.008],
     minimum: 5000,
     intensity: "high",
+    baseWeight: 1,
+    rateWeight: 0,
     defaultMonths: 10,
     defaultCost: 2000000000,
   },
@@ -76,6 +84,8 @@ const packages = {
     rateRange: [0.003, 0.006],
     minimum: 7000,
     intensity: "high",
+    baseWeight: 1,
+    rateWeight: 2 / 3,
     defaultMonths: 12,
     defaultCost: 3000000000,
   },
@@ -580,9 +590,9 @@ function getCostBreakdownLines(card, kind) {
     .map((item) => `${item.label}: ${formatWon(item.amount)}`);
 }
 
-function pickFromRange(range, intensity) {
+function pickFromRange(range, intensity, explicitWeight = null) {
   const [min, max] = range;
-  const weight = intensityWeights[intensity] ?? intensityWeights.base;
+  const weight = explicitWeight ?? intensityWeights[intensity] ?? intensityWeights.base;
   return (min + (max - min) * weight) * MANWON;
 }
 
@@ -693,12 +703,9 @@ function calculateProject(card) {
   const expenseFee = readNumber(card.querySelector(".expense-fee"));
   const manualAdjustment = readNumber(card.querySelector(".manual-adjustment"));
 
-  const packageBaseFee = pickFromRange(selectedPackage.baseRange, intensity);
-  const bracketBaseFee = packageKey === "diagnostic" ? 0 : pickFromRange(bracket.baseRange, intensity);
-  const baseFee = Math.max(packageBaseFee, bracketBaseFee, selectedPackage.minimum * MANWON);
-  const packageLinkedRate = pickFromRange(selectedPackage.rateRange, intensity) / MANWON;
-  const bracketLinkedRate = packageKey === "diagnostic" ? 0 : pickFromRange(bracket.rateRange, intensity) / MANWON;
-  const linkedRate = Math.max(packageLinkedRate, bracketLinkedRate);
+  const packageBaseFee = pickFromRange(selectedPackage.baseRange, intensity, selectedPackage.baseWeight);
+  const baseFee = Math.max(packageBaseFee, selectedPackage.minimum * MANWON);
+  const linkedRate = pickFromRange(selectedPackage.rateRange, intensity, selectedPackage.rateWeight) / MANWON;
   const linkedFee = managedCost * linkedRate;
 
   const optionFee = [...card.querySelectorAll(".option-check:checked")].reduce((sum, checkbox) => {
