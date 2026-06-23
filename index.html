@@ -12,6 +12,7 @@
         <div>
           <p class="eyebrow">Bigplanner Partners</p>
           <h1>PM 수수료 산정</h1>
+          <p class="topbar-copy">프로젝트 조건을 진단하고 관리대상 사업비, 패키지, 옵션을 조합해 PM 제안금액과 문서를 산출합니다.</p>
         </div>
         <div class="top-actions">
           <button class="ghost-button" id="resetProject" type="button">초기화</button>
@@ -40,9 +41,7 @@
       </section>
 
       <section class="reference-section" aria-label="산정 기준">
-        <div class="section-head">
-          <h2>산정 기준</h2>
-        </div>
+        <strong>산정 기준</strong>
         <div class="reference-list">
           <article>
             <strong>기본 산식</strong>
@@ -76,150 +75,36 @@
 
     <template id="projectTemplate">
       <article class="project-card">
-        <div class="project-card__top project-card__top--single">
+        <div class="basic-info-block flow-section">
+          <div class="option-block__head">
+            <strong>기본 정보</strong>
+            <span>프로젝트명과 예정 기간을 먼저 확인합니다.</span>
+          </div>
+          <div class="project-card__top project-card__top--single">
           <div class="project-title-group">
             <label>
               <span>프로젝트명</span>
               <input class="project-name" type="text" value="프로젝트 1" />
             </label>
           </div>
+            <label>
+              <span>기간</span>
+              <div class="unit-input">
+                <input class="duration-months" type="number" min="1" max="60" step="1" />
+                <em>개월</em>
+              </div>
+            </label>
+          </div>
         </div>
 
-        <div class="form-grid">
-          <label class="visually-hidden">
-            <span>패키지</span>
-            <select class="package-select"></select>
-          </label>
-          <label class="cost-field">
-            <span>관리대상 사업비</span>
-            <div class="cost-control">
-              <input class="managed-cost" type="hidden" />
-              <div class="cost-summary">
-                <div>
-                  <small>PM 수수료 산정 기준</small>
-                  <strong class="cost-readable">0원</strong>
-                </div>
-                <div>
-                  <small>제외 참고 사업비</small>
-                  <strong class="excluded-readable">0원</strong>
-                </div>
-                <div>
-                  <small>전체 개발비 참고</small>
-                  <strong class="development-readable">0원</strong>
-                </div>
-              </div>
-              <div class="cost-breakdown">
-                <section>
-                  <h3>포함 사업비</h3>
-                  <p>기획서 기준 건축 PM 수수료 산정에 반영합니다.</p>
-                  <div class="cost-component-grid">
-                    <label>
-                      <span>설계비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="design" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>감리비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="supervision" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>인허가비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="permit" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>철거비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="demolition" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>시공비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="construction" type="text" inputmode="numeric" data-step="10000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>인테리어 공사비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="interior" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>각종 부담금</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="charges" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>예비비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="included" data-cost-key="contingency" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                  </div>
-                </section>
-                <section class="cost-excluded">
-                  <h3>제외 또는 별도 참고</h3>
-                  <p>토지비·취득세·금융비·매각가는 기본 건축 PM 요율에 넣지 않습니다.</p>
-                  <div class="cost-component-grid">
-                    <label>
-                      <span>토지비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="land" type="text" inputmode="numeric" data-step="10000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>취득세</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="tax" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>금융비</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="finance" type="text" inputmode="numeric" data-step="1000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                    <label>
-                      <span>매각가</span>
-                      <div class="money-input">
-                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="sale" type="text" inputmode="numeric" data-step="10000000" />
-                        <em>원</em>
-                      </div>
-                    </label>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </label>
-          <label>
-            <span>기간</span>
-            <div class="unit-input">
-              <input class="duration-months" type="number" min="1" max="60" step="1" />
-              <em>개월</em>
-            </div>
-          </label>
-        </div>
+        <label class="visually-hidden">
+          <span>패키지</span>
+          <select class="package-select"></select>
+        </label>
 
-        <div class="diagnosis-block">
+        <div class="diagnosis-block flow-section">
           <div class="option-block__head">
-            <strong>프로젝트 진단</strong>
+            <strong><span class="step-marker">01</span> 프로젝트 진단</strong>
             <span>답변 기준으로 패키지와 보강 옵션 추천</span>
           </div>
           <div class="diagnosis-grid">
@@ -337,79 +222,211 @@
           </div>
         </div>
 
-        <div class="package-picker">
+        <div class="cost-panel flow-section">
           <div class="option-block__head">
-            <strong>패키지 선택</strong>
+            <strong><span class="step-marker">02</span> 관리대상 사업비</strong>
+            <span>건축 PM 수수료 기준 사업비와 제외 참고비를 구분합니다.</span>
+          </div>
+          <div class="form-grid">
+            <label class="cost-field">
+              <span>관리대상 사업비</span>
+              <div class="cost-control">
+                <input class="managed-cost" type="hidden" />
+                <div class="cost-summary">
+                  <div>
+                    <small>PM 수수료 산정 기준</small>
+                    <strong class="cost-readable">0원</strong>
+                  </div>
+                  <div>
+                    <small>제외 참고 사업비</small>
+                    <strong class="excluded-readable">0원</strong>
+                  </div>
+                  <div>
+                    <small>전체 개발비 참고</small>
+                    <strong class="development-readable">0원</strong>
+                  </div>
+                </div>
+                <div class="cost-breakdown">
+                  <section>
+                    <h3>포함 사업비</h3>
+                    <p>기획서 기준 건축 PM 수수료 산정에 반영합니다.</p>
+                    <div class="cost-component-grid">
+                      <label>
+                        <span>설계비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="design" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>감리비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="supervision" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>인허가비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="permit" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>철거비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="demolition" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>시공비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="construction" type="text" inputmode="numeric" data-step="10000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>인테리어 공사비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="interior" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>각종 부담금</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="charges" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>예비비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="included" data-cost-key="contingency" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                    </div>
+                  </section>
+                  <section class="cost-excluded">
+                    <h3>제외 또는 별도 참고</h3>
+                    <p>토지비·취득세·금융비·매각가는 기본 건축 PM 요율에 넣지 않습니다.</p>
+                    <div class="cost-component-grid">
+                      <label>
+                        <span>토지비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="excluded" data-cost-key="land" type="text" inputmode="numeric" data-step="10000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>취득세</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="excluded" data-cost-key="tax" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>금융비</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="excluded" data-cost-key="finance" type="text" inputmode="numeric" data-step="1000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                      <label>
+                        <span>매각가</span>
+                        <div class="money-input">
+                          <input class="cost-component" data-cost-kind="excluded" data-cost-key="sale" type="text" inputmode="numeric" data-step="10000000" />
+                          <em>원</em>
+                        </div>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="package-picker flow-section">
+          <div class="option-block__head">
+            <strong><span class="step-marker">03</span> 패키지 선택</strong>
             <span>프로젝트 성격에 맞는 범위를 선택</span>
           </div>
           <div class="package-card-grid"></div>
         </div>
 
-        <div class="pm-task-block">
+        <div class="pm-task-block flow-section">
           <div class="option-block__head">
-            <strong>기본 PM 업무 리스트</strong>
+            <strong><span class="step-marker">04</span> 기본 PM 업무 리스트</strong>
             <span>선택한 패키지에 포함되는 세부 관리 업무</span>
           </div>
           <div class="pm-task-grid"></div>
         </div>
 
-        <div class="option-block">
+        <div class="option-block flow-section">
           <div class="option-block__head">
-            <strong>옵션업무</strong>
+            <strong><span class="step-marker">04</span> 옵션업무</strong>
             <span>빠진 기본업무 보강 + 특수업무 선택</span>
           </div>
           <div class="option-grid"></div>
         </div>
 
-        <div class="adjustment-grid">
-          <label>
-            <span>성과보수</span>
-            <div class="money-input">
-              <input class="success-fee" type="number" min="0" step="1000000" value="0" />
-              <em>원</em>
-            </div>
-          </label>
-          <label>
-            <span>실비</span>
-            <div class="money-input">
-              <input class="expense-fee" type="number" min="0" step="100000" value="0" />
-              <em>원</em>
-            </div>
-          </label>
-          <label>
-            <span>직접 조정</span>
-            <div class="money-input">
-              <input class="manual-adjustment" type="number" step="100000" value="0" />
-              <em>원</em>
-            </div>
-          </label>
-        </div>
-
-        <div class="result-grid">
-          <div>
-            <span>기본 PM비</span>
-            <strong class="base-fee">0원</strong>
-          </div>
-          <div>
-            <span>사업비 연동</span>
-            <strong class="linked-fee">0원</strong>
-          </div>
-          <div>
-            <span>옵션·가산</span>
-            <strong class="option-fee">0원</strong>
-          </div>
-          <div class="total-result">
-            <span>제안금액</span>
-            <strong class="project-total">0원</strong>
-          </div>
-        </div>
-        <p class="calculation-note"></p>
-
-        <div class="proposal-block">
+        <div class="result-block flow-section">
           <div class="option-block__head">
-            <strong>제안·업무범위·계약 문서</strong>
+            <strong><span class="step-marker">05</span> 산정결과</strong>
+            <span>성과보수, 실비, 직접 조정까지 반영한 최종 제안금액</span>
+          </div>
+          <div class="adjustment-grid">
+            <label>
+              <span>성과보수</span>
+              <div class="money-input">
+                <input class="success-fee" type="number" min="0" step="1000000" value="0" />
+                <em>원</em>
+              </div>
+            </label>
+            <label>
+              <span>실비</span>
+              <div class="money-input">
+                <input class="expense-fee" type="number" min="0" step="100000" value="0" />
+                <em>원</em>
+              </div>
+            </label>
+            <label>
+              <span>직접 조정</span>
+              <div class="money-input">
+                <input class="manual-adjustment" type="number" step="100000" value="0" />
+                <em>원</em>
+              </div>
+            </label>
+          </div>
+          <div class="result-grid">
+            <div>
+              <span>기본 PM비</span>
+              <strong class="base-fee">0원</strong>
+            </div>
+            <div>
+              <span>사업비 연동</span>
+              <strong class="linked-fee">0원</strong>
+            </div>
+            <div>
+              <span>옵션·가산</span>
+              <strong class="option-fee">0원</strong>
+            </div>
+            <div class="total-result">
+              <span>제안금액</span>
+              <strong class="project-total">0원</strong>
+            </div>
+          </div>
+          <p class="calculation-note"></p>
+        </div>
+
+        <div class="proposal-block flow-section">
+          <div class="option-block__head">
+            <strong><span class="step-marker">06</span> 제안·업무범위·계약 문서</strong>
             <div class="inline-actions">
-              <button class="ghost-button proposal-generate" type="button">제안서 작성</button>
+              <button class="primary-button proposal-generate" type="button">제안서 작성</button>
               <button class="ghost-button scope-generate" type="button">업무범위표 작성</button>
               <button class="ghost-button contract-generate" type="button">계약서 작성</button>
             </div>

@@ -7,6 +7,8 @@
   --panel: #ffffff;
   --green: #1f6f54;
   --green-dark: #164b3a;
+  --green-soft: #eef7f2;
+  --panel-soft: #f8faf7;
   --gold: #b7822d;
   --blue: #315f93;
   --red: #ad4b42;
@@ -43,15 +45,15 @@ button {
 .app {
   width: min(1440px, 100%);
   margin: 0 auto;
-  padding: 28px;
+  padding: 24px 28px 32px;
 }
 
 .topbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 18px 0 24px;
+  padding: 10px 0 18px;
 }
 
 .eyebrow {
@@ -69,8 +71,8 @@ p {
 }
 
 h1 {
-  font-size: clamp(32px, 5vw, 58px);
-  line-height: 1;
+  font-size: clamp(28px, 3.4vw, 42px);
+  line-height: 1.05;
 }
 
 h2 {
@@ -80,6 +82,14 @@ h2 {
 .top-actions {
   display: flex;
   gap: 10px;
+}
+
+.topbar-copy {
+  max-width: 680px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .primary-button,
@@ -110,9 +120,9 @@ h2 {
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 10px 0;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 8px 0;
   background: rgba(247, 248, 244, 0.94);
   backdrop-filter: blur(10px);
 }
@@ -122,8 +132,8 @@ h2 {
 }
 
 .summary-tile {
-  min-height: 76px;
-  padding: 14px 16px;
+  min-height: 84px;
+  padding: 13px 15px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -141,8 +151,8 @@ label span {
 
 .summary-tile strong {
   display: block;
-  margin-top: 8px;
-  font-size: clamp(20px, 2.4vw, 28px);
+  margin-top: 7px;
+  font-size: clamp(20px, 2vw, 26px);
   line-height: 1.1;
 }
 
@@ -175,24 +185,31 @@ label span {
 }
 
 .reference-section {
-  margin-bottom: 18px;
-  padding: 20px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 14px;
+  padding: 12px 14px;
 }
 
-.section-head {
-  margin-bottom: 12px;
+.reference-section > strong {
+  color: var(--green-dark);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: nowrap;
 }
 
 .reference-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .reference-list article,
 .package-rule {
-  padding: 14px;
-  background: #f8faf7;
+  padding: 10px 12px;
+  background: var(--panel-soft);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -207,8 +224,8 @@ label span {
 .reference-list p,
 .package-rule p {
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .package-rule dl {
@@ -285,12 +302,14 @@ label span {
 }
 
 #projectRoot {
-  padding: 16px;
+  padding: 14px;
 }
 
 .project-card {
-  padding: 18px;
-  background: #fff;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  background: #f3f6f1;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -304,6 +323,10 @@ label span {
 
 .project-card__top--single {
   grid-template-columns: 1fr;
+}
+
+.basic-info-block .project-card__top--single {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.28fr);
 }
 
 .project-title-group input {
@@ -323,7 +346,7 @@ label span {
   display: grid;
   gap: 12px;
   align-items: start;
-  margin-top: 14px;
+  margin-top: 0;
 }
 
 .form-grid {
@@ -384,9 +407,9 @@ select:focus {
 }
 
 .cost-summary div {
-  min-height: 72px;
-  padding: 11px;
-  background: #eef7f2;
+  min-height: 66px;
+  padding: 10px 11px;
+  background: var(--green-soft);
   border: 1px solid rgba(18, 111, 76, 0.16);
   border-radius: 8px;
 }
@@ -401,9 +424,9 @@ select:focus {
 
 .cost-summary strong {
   display: block;
-  margin-top: 8px;
+  margin-top: 7px;
   color: var(--green-dark);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.2;
 }
 
@@ -458,15 +481,34 @@ select:focus {
   font-weight: 800;
 }
 
+.flow-section,
 .option-block,
 .pm-task-block,
 .diagnosis-block,
 .proposal-block {
-  margin-top: 16px;
   padding: 14px;
-  background: #f8faf7;
+  background: var(--panel-soft);
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+.basic-info-block,
+.result-block {
+  background: #fff;
+}
+
+.step-marker {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 24px;
+  margin-right: 8px;
+  color: #fff;
+  background: var(--green-dark);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .diagnosis-grid {
@@ -527,7 +569,7 @@ select:focus {
 }
 
 .diagnosis-choice.is-selected {
-  background: #edf8f2;
+  background: var(--green-soft);
   border-color: var(--green);
   box-shadow: inset 0 0 0 1px var(--green), 0 6px 18px rgba(18, 111, 76, 0.08);
 }
@@ -570,9 +612,9 @@ select:focus {
   width: 100%;
   min-height: 680px;
   resize: vertical;
-  padding: 16px;
+  padding: 18px;
   color: var(--ink);
-  background: #fff;
+  background: linear-gradient(180deg, #fff 0%, #fbfcfa 100%);
   border: 1px solid var(--line);
   border-radius: 8px;
   font-family: "Noto Sans KR", "Segoe UI", sans-serif;
@@ -655,9 +697,8 @@ select:focus {
 }
 
 .package-picker {
-  margin-top: 16px;
   padding: 14px;
-  background: #f8faf7;
+  background: var(--panel-soft);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -687,7 +728,7 @@ select:focus {
 }
 
 .package-card.is-selected {
-  background: #f2faf6;
+  background: var(--green-soft);
 }
 
 .package-card > span {
@@ -738,6 +779,12 @@ select:focus {
   margin-bottom: 12px;
 }
 
+.option-block__head strong {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink);
+}
+
 .option-block__head span {
   color: var(--muted);
   font-size: 13px;
@@ -780,7 +827,7 @@ select:focus {
 
 .option-chip.is-included,
 .option-chip.is-selected {
-  background: #eef7f2;
+  background: var(--green-soft);
   border-color: rgba(31, 111, 84, 0.45);
 }
 
@@ -877,7 +924,7 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .result-grid > div {
@@ -915,8 +962,13 @@ select:focus {
 .proposal-generate,
 .scope-generate,
 .contract-generate {
-  min-height: 36px;
+  min-width: 128px;
+  min-height: 38px;
   padding: 0 14px;
+}
+
+.result-block .adjustment-grid {
+  margin-top: 0;
 }
 
 @media (max-width: 1100px) {
@@ -931,8 +983,16 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .reference-section {
+    grid-template-columns: 1fr;
+  }
+
   .form-grid {
     grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
+  }
+
+  .basic-info-block .project-card__top--single {
+    grid-template-columns: minmax(0, 1fr) minmax(170px, 0.4fr);
   }
 
   .cost-summary,
@@ -972,8 +1032,24 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-tile {
+    min-height: 92px;
+  }
+
   .cost-field {
     grid-column: auto;
+  }
+
+  .basic-info-block .project-card__top--single,
+  .diagnosis-result,
+  .option-block__head,
+  .inline-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .diagnosis-card-list {
