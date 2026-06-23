@@ -514,8 +514,17 @@ function toContractList(items, fallback = "해당 없음") {
   return items.map((item) => `- ${item}`).join("\n");
 }
 
+function parseAmount(value) {
+  return Number(String(value ?? "").replace(/[^\d.-]/g, "")) || 0;
+}
+
 function readNumber(input) {
-  return Number(input?.value || 0);
+  return parseAmount(input?.value);
+}
+
+function formatAmountInput(input) {
+  const amount = parseAmount(input.value);
+  input.value = amount > 0 ? amount.toLocaleString("ko-KR") : "";
 }
 
 function sumCostComponents(card, kind) {
@@ -543,7 +552,7 @@ function distributeDefaultCost(card, totalCost) {
         ? Math.max(0, totalCost - assigned)
         : Math.round((totalCost * share) / MANWON) * MANWON;
     assigned += value;
-    input.value = value;
+    input.value = value > 0 ? value.toLocaleString("ko-KR") : "";
   });
 
   card.querySelectorAll('.cost-component[data-cost-kind="excluded"]').forEach((input) => {
@@ -1275,10 +1284,12 @@ function createProject(initialPackage = "standard") {
 
   fragment.querySelectorAll("input, select").forEach((input) => {
     input.addEventListener("input", () => {
+      if (input.classList.contains("cost-component")) formatAmountInput(input);
       updateCard(card);
       if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });
     input.addEventListener("change", () => {
+      if (input.classList.contains("cost-component")) formatAmountInput(input);
       updateCard(card);
       if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });
