@@ -865,7 +865,9 @@ select:focus {
   line-height: 1.55;
 }
 
-.document-generate {
+.proposal-generate,
+.scope-generate,
+.contract-generate {
   min-height: 36px;
   padding: 0 14px;
 }

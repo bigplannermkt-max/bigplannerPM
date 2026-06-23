@@ -926,24 +926,6 @@ ${toContractList(paidOptions)}
 서명/날인:`;
 }
 
-function buildCombinedDocument(card, result) {
-  return `${buildProposalDraft(card, result)}
-
-
-============================================================
-2부. PM 업무범위표
-============================================================
-
-${buildScopeAttachment(card, result)}
-
-
-============================================================
-3부. PM 용역계약서 초안
-============================================================
-
-${buildContractDraft(card, result)}`;
-}
-
 function populatePackageSelect(select) {
   Object.entries(packages).forEach(([value, item]) => {
     const option = document.createElement("option");
@@ -1190,9 +1172,19 @@ function createProject(initialPackage = "standard") {
     applyDiagnosis(card);
   });
 
-  fragment.querySelector(".document-generate").addEventListener("click", () => {
+  fragment.querySelector(".proposal-generate").addEventListener("click", () => {
     const result = calculateProject(card);
-    card.querySelector(".document-draft").value = buildCombinedDocument(card, result);
+    card.querySelector(".document-draft").value = buildProposalDraft(card, result);
+  });
+
+  fragment.querySelector(".scope-generate").addEventListener("click", () => {
+    const result = calculateProject(card);
+    card.querySelector(".document-draft").value = buildScopeAttachment(card, result);
+  });
+
+  fragment.querySelector(".contract-generate").addEventListener("click", () => {
+    const result = calculateProject(card);
+    card.querySelector(".document-draft").value = buildContractDraft(card, result);
   });
 
   fragment.querySelectorAll("input, select").forEach((input) => {
