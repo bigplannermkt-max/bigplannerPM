@@ -1097,6 +1097,7 @@ function syncOptionCards(card) {
     checkbox.disabled = isIncluded;
     if (isIncluded) checkbox.checked = true;
     if (!isIncluded && wasIncluded) checkbox.checked = false;
+    chip.classList.toggle("is-selected", !isIncluded && checkbox.checked);
     chip.dataset.wasIncluded = String(isIncluded);
 
     if (isIncluded) {
@@ -1285,11 +1286,13 @@ function createProject(initialPackage = "standard") {
   fragment.querySelectorAll("input, select").forEach((input) => {
     input.addEventListener("input", () => {
       if (input.classList.contains("cost-component")) formatAmountInput(input);
+      if (input.classList.contains("option-check")) syncOptionCards(card);
       updateCard(card);
       if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });
     input.addEventListener("change", () => {
       if (input.classList.contains("cost-component")) formatAmountInput(input);
+      if (input.classList.contains("option-check")) syncOptionCards(card);
       updateCard(card);
       if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });

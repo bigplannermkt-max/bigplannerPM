@@ -768,13 +768,18 @@ select:focus {
   border-radius: 8px;
 }
 
-.option-chip.is-included {
+.option-chip.is-included,
+.option-chip.is-selected {
   background: #eef7f2;
   border-color: rgba(31, 111, 84, 0.45);
 }
 
 .option-chip.is-recommended {
   border-color: rgba(183, 130, 45, 0.55);
+}
+
+.option-chip.is-selected {
+  box-shadow: inset 0 0 0 1px rgba(31, 111, 84, 0.32);
 }
 
 .option-chip.is-included .option-check {
