@@ -475,6 +475,7 @@ const elements = {
   stickyLinkedRate: document.querySelector("#stickyLinkedRate"),
   stickyOptionAmount: document.querySelector("#stickyOptionAmount"),
   stickyGrandAmount: document.querySelector("#stickyGrandAmount"),
+  stickyGrandRate: document.querySelector("#stickyGrandRate"),
 };
 
 function formatWon(amount) {
@@ -752,12 +753,15 @@ function updateCard(card) {
 
 function updateSummary(result) {
   const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
+  const grandTotal = result.subtotal + vat;
+  const grandRate = result.managedCost > 0 ? grandTotal / result.managedCost : 0;
 
   elements.stickyBaseAmount.textContent = formatWon(result.baseFee);
   elements.stickyLinkedAmount.textContent = formatWon(result.linkedFee);
   elements.stickyLinkedRate.textContent = `적용 요율 ${formatPercent(result.linkedRate)}`;
   elements.stickyOptionAmount.textContent = formatWon(result.optionFee);
-  elements.stickyGrandAmount.textContent = formatWon(result.subtotal + vat);
+  elements.stickyGrandAmount.textContent = formatWon(grandTotal);
+  elements.stickyGrandRate.textContent = result.managedCost > 0 ? `사업비 대비 ${formatPercent(grandRate)}` : "사업비 대비 -";
 }
 
 function getVisibleTaskTitles(packageKey) {
