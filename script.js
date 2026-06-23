@@ -789,13 +789,16 @@ function buildProposalDraft(card, result) {
   const optionLines = getSelectedOptionLabels(result);
   const diagnosis = card.querySelector(".diagnosis-reason")?.textContent || "";
   const total = result.subtotal + (elements.includeVat.checked ? result.subtotal * VAT_RATE : 0);
+  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
 
-  return `빅플래너 PM 제안서 문구
+  return `빅플래너 PM 제안서
 
 1. 제안 개요
-${projectName}의 PM 수수료는 단순히 총사업비에 일정 요율을 곱하는 방식이 아니라, 프로젝트의 규모, 기간, 참여 강도, 리스크 수준, 업무 범위에 따라 산정합니다. 소규모 건축 프로젝트는 사업비 규모와 무관하게 사업 착수, 설계 조율, 견적 비교, 계약 검토, 공정회의, 기성 검토, 설계변경 관리, 준공 정산 등 고정 업무가 발생하므로, 기본 PM비를 우선 산정하고 사업비 연동 보수와 옵션업무비를 별도로 반영합니다.
+본 프로젝트는 설계자, 시공사, 감리자, 인허가 관계자, 금융·임대·운영 관계자가 동시에 움직이는 프로젝트입니다. 빅플래너 PM은 발주자 관점에서 목표, 예산, 일정, 품질, 리스크, 커뮤니케이션을 관리하고 주요 의사결정이 기록과 근거를 갖고 진행되도록 지원합니다.
+
+본 제안은 단순히 사업비에 일정 요율을 곱하는 방식이 아니라, 프로젝트 규모, 참여 강도, 현재 단계, 리스크 수준, 업무 범위를 나누어 산정합니다. 소규모 건축 프로젝트도 착수, 설계 조율, 견적 비교, 계약 검토, 공정회의, 기성 검토, 설계변경 관리, 준공 정산 등 고정 업무가 발생하므로 기본 PM비를 우선 반영하고, 사업비 연동 보수와 옵션업무비를 별도로 제시합니다.
 
 2. 추천 패키지
 - 선택 패키지: ${result.selectedPackage.label}
@@ -803,7 +806,22 @@ ${projectName}의 PM 수수료는 단순히 총사업비에 일정 요율을 곱
 - 추천/선택 사유: ${diagnosis || result.selectedPackage.fit}
 - 참여 방식: ${result.selectedPackage.engagement}
 
-3. 산정 기준
+3. PM 운영 목표
+- 발주자 목표 정리: 사용 목적, 임대·매각 계획, 예산 한도, 품질 기준, 준공 희망일을 의사결정 기준으로 정리합니다.
+- 일정 관리: 설계, 인허가, 견적, 계약, 착공, 주요 공정, 사용승인, 정산까지 마일스톤을 관리합니다.
+- 비용 관리: 관리대상 사업비, 견적 비교, 변경 비용, 기성 청구, 준공 정산을 추적합니다.
+- 품질·범위 관리: 설계 의도, 공사 범위, 누락·중복 항목, 시공 품질 이슈를 점검합니다.
+- 리스크 관리: 인허가 지연, 공사비 상승, 민원, 설계변경, 시공사 리스크를 이슈 리스트로 관리합니다.
+- 커뮤니케이션 관리: 발주자, 설계자, 감리자, 시공사 간 회의체와 보고 체계를 운영합니다.
+
+4. 단계별 수행 방식
+- 착수·기획: 사업 목표, 예산 프레임, 관리대상 사업비, 마스터 일정, 주요 리스크를 정리합니다.
+- 설계·인허가: 설계 방향, 예산 적합성, 인허가 보완사항, 설계변경 영향을 검토합니다.
+- 견적·계약: 견적 요청 기준, 공종별 금액, 누락 항목, 지급 조건, 계약조건을 비교합니다.
+- 시공 단계: 공정회의, 기성 검토, 변경관리, 품질 이슈, 의사결정 항목을 관리합니다.
+- 준공·정산: 사용승인 일정, 펀치리스트, 하자·보완사항, 준공 정산 검토를 지원합니다.
+
+5. 산정 기준
 - 관리대상 사업비: ${formatWon(result.managedCost)}
 - 포함 사업비 세부: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
 - 제외 또는 별도 참고: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
@@ -812,14 +830,27 @@ ${projectName}의 PM 수수료는 단순히 총사업비에 일정 요율을 곱
 - 사업비 연동 보수: ${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})
 - 옵션·가산: ${formatWon(result.optionFee)}
 - 총 제안금액: ${formatWon(total)}
+- 관리대상 사업비 대비 환산 요율: ${totalRate}
 
-4. 포함 및 선택 업무
+6. 주요 산출물
+- 사업 목표 및 범위 정리표
+- 관리대상 사업비 산정표
+- 마스터 일정표
+- 견적 비교표 및 계약조건 검토 메모
+- 회의록 및 오픈이슈 리스트
+- 변경관리표
+- 기성검토 의견
+- 준공 전 펀치리스트 및 정산 검토표
+
+7. 포함 및 선택 업무
 ${toContractList(optionLines)}
 
-5. 업무 경계
+8. 의사결정 및 업무 경계
+빅플래너 PM은 발주자의 이익을 기준으로 검토 의견과 대안을 제시하지만, 발주자의 사전 승인 없이 비용 발생, 계약 체결, 설계변경 확정, 공사비 지급, 금융상품 선택, 임대·매각 조건 확정 등 금전적 의사결정을 대신하지 않습니다.
+
 본 PM 용역은 건축주를 위한 사업관리, 일정관리, 비용관리, 품질관리, 커뮤니케이션 관리 및 의사결정 지원 업무입니다. 설계, 법정 감리, 시공, 구조·전기·소방 등 전문기술 검토, 법률대리, 세무자문, 금융상품 알선, 부동산 중개행위는 별도 전문가의 업무로 구분합니다.
 
-6. 견적 유효조건
+9. 견적 유효조건
 본 견적은 작성일로부터 30일간 유효하며, 관리대상 사업비, 용역기간, 현장방문 빈도, 회의 빈도, 업무범위, 옵션 선택이 변경되는 경우 재산정할 수 있습니다.`;
 }
 
