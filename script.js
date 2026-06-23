@@ -248,10 +248,10 @@ const options = [
     id: "claim",
     category: "현장관리",
     label: "민원·클레임 1차 대응",
-    amount: 300 * MANWON,
-    range: "월 200만~400만원",
+    amount: 150 * MANWON,
+    range: "월 100만~200만원",
     monthly: true,
-    description: "민원 기록, 이해관계자 커뮤니케이션, 시공사 협의, 쟁점 정리 등 1차 대응을 지원합니다.",
+    description: "민원 기록, 이해관계자 커뮤니케이션, 시공사 협의, 쟁점 정리 등 1차 대응을 지원합니다. 법률대리, 손해배상 협상, 공식 분쟁 조정은 제외합니다.",
   },
   {
     id: "lease",
