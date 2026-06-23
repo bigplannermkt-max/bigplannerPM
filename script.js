@@ -462,13 +462,17 @@ function formatWon(amount) {
   const eok = Math.floor(rounded / EOK);
   const cheonman = Math.floor((rounded % EOK) / CHEONMAN);
   const man = Math.floor((rounded % CHEONMAN) / MANWON);
-  const parts = [];
+  let text = "";
 
-  if (eok > 0) parts.push(`${eok}억`);
-  if (cheonman > 0 || eok > 0) parts.push(`${cheonman}천만원`);
-  if (man > 0) parts.push(`${man}만원`);
+  if (eok > 0 && cheonman === 0 && man === 0) return `${eok}억원`;
+  if (eok > 0) text += `${eok}억`;
 
-  return parts.join(" ");
+  if (cheonman > 0) {
+    text += `${cheonman}천`;
+  }
+
+  if (man > 0) text += `${man.toLocaleString("ko-KR")}`;
+  return `${text}만원`;
 }
 
 function formatPercent(rate) {
