@@ -535,6 +535,61 @@ function toContractList(items, fallback = "해당 없음") {
   return items.map((item) => `- ${item}`).join("\n");
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatDocumentDate(date = new Date()) {
+  return `${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, "0")}. ${String(date.getDate()).padStart(2, "0")}.`;
+}
+
+function buildDocumentNumber(prefix) {
+  const now = new Date();
+  return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-001`;
+}
+
+function renderDocumentTable(rows) {
+  return `
+    <table class="legal-table">
+      <tbody>
+        ${rows
+          .map(
+            ([label, value]) => `
+              <tr>
+                <th>${escapeHtml(label)}</th>
+                <td>${escapeHtml(value)}</td>
+              </tr>
+            `,
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderDocumentBullets(items, fallback = "해당 없음") {
+  const list = items.length ? items : [fallback];
+  return `<ul class="legal-list">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function renderPlainDocumentHtml(title, text) {
+  return `
+    <article class="legal-page legal-page--plain">
+      <header class="legal-cover legal-cover--compact">
+        <p>Bigplanner Partners</p>
+        <h2>${escapeHtml(title)}</h2>
+        <span>작성일 ${formatDocumentDate()}</span>
+      </header>
+      <pre class="legal-pre">${escapeHtml(text)}</pre>
+    </article>
+  `;
+}
+
 function parseAmount(value) {
   return Number(String(value ?? "").replace(/[^\d.-]/g, "")) || 0;
 }
@@ -945,6 +1000,171 @@ ${toContractList(raciLines)}
 - 실비와 외부 전문가 비용은 별도 정산`;
 }
 
+function buildScopeAttachmentHtml(card, result) {
+  const projectName = card.querySelector(".project-name").value || "프로젝트";
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
+  const visibleTasks = getVisibleTasks(result.packageKey);
+  const phases = [...new Set(visibleTasks.map((task) => task.phase))];
+  const optionRows = [
+    ...result.includedOptionItems.map((option) => ({
+      label: option.label,
+      status: "패키지 포함",
+      amount: "포함",
+      scope: option.description,
+      note: option.caution || option.basis || "-",
+    })),
+    ...result.selectedPaidOptions.map((option) => ({
+      label: option.label,
+      status: "추가 선택",
+      amount: `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`,
+      scope: option.description,
+      note: option.caution || option.basis || "-",
+    })),
+  ];
+
+  return `
+    <article class="legal-page">
+      <header class="legal-cover legal-cover--attachment">
+        <div>
+          <p>별첨 1</p>
+          <h2>PM 업무범위표</h2>
+          <span>PM 용역계약서에 첨부되는 과업범위 및 산출 기준 문서</span>
+        </div>
+        <dl>
+          <div><dt>문서번호</dt><dd>${escapeHtml(buildDocumentNumber("SOW"))}</dd></div>
+          <div><dt>작성일</dt><dd>${escapeHtml(formatDocumentDate())}</dd></div>
+          <div><dt>프로젝트</dt><dd>${escapeHtml(projectName)}</dd></div>
+        </dl>
+      </header>
+
+      <section class="legal-section">
+        <h3>1. 업무범위 요약</h3>
+        ${renderDocumentTable([
+          ["선택 패키지", `${result.selectedPackage.label} / ${result.selectedPackage.description}`],
+          ["관리대상 사업비", formatWon(result.managedCost)],
+          ["예정 용역기간", `${result.months}개월`],
+          ["기본 PM비", formatWon(result.baseFee)],
+          ["사업비 연동 보수", `${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})`],
+          ["옵션·가산 금액", formatWon(result.optionFee)],
+          ["포함 사업비", includedCostLines.length ? includedCostLines.join(", ") : "미입력"],
+          ["제외 또는 별도 참고", excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"],
+        ])}
+      </section>
+
+      <section class="legal-section">
+        <h3>2. 기본 PM 업무 범위</h3>
+        <div class="legal-table-scroll">
+          <table class="legal-table legal-table--wide">
+            <thead>
+              <tr>
+                <th>단계</th>
+                <th>주요 업무</th>
+                <th>포함 여부</th>
+                <th>산출물</th>
+                <th>비고</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${phases
+                .map((phase) => {
+                  const tasks = visibleTasks.filter((task) => task.phase === phase);
+                  return `
+                    <tr>
+                      <th>${escapeHtml(phase)}</th>
+                      <td>${renderDocumentBullets(tasks.map((task) => `${task.no}. ${task.title}`))}</td>
+                      <td>기본 포함</td>
+                      <td>회의록, 검토 메모, 관리표, 보고자료</td>
+                      <td>${escapeHtml(getPhaseFeeWeight(phase).note)}</td>
+                    </tr>
+                  `;
+                })
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="legal-section">
+        <h3>3. 패키지 포함 및 추가 선택 업무</h3>
+        <div class="legal-table-scroll">
+          <table class="legal-table legal-table--wide">
+            <thead>
+              <tr>
+                <th>업무명</th>
+                <th>상태</th>
+                <th>금액</th>
+                <th>범위</th>
+                <th>제외사항/근거</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                optionRows.length
+                  ? optionRows
+                      .map(
+                        (option) => `
+                          <tr>
+                            <td>${escapeHtml(option.label)}</td>
+                            <td><span class="legal-badge">${escapeHtml(option.status)}</span></td>
+                            <td>${escapeHtml(option.amount)}</td>
+                            <td>${escapeHtml(option.scope)}</td>
+                            <td>${escapeHtml(option.note)}</td>
+                          </tr>
+                        `,
+                      )
+                      .join("")
+                  : `<tr><td colspan="5">선택 또는 포함된 옵션 업무가 없습니다.</td></tr>`
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="legal-section">
+        <h3>4. 책임 구분표 (RACI 요약)</h3>
+        <div class="legal-table-scroll">
+          <table class="legal-table legal-table--wide">
+            <thead>
+              <tr>
+                <th>업무영역</th>
+                <th>책임 주체</th>
+                <th>PM 역할</th>
+                <th>최종 승인자</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${raciItems
+                .map(
+                  ([area, responsible, pmRole, approver]) => `
+                    <tr>
+                      <td>${escapeHtml(area)}</td>
+                      <td>${escapeHtml(responsible)}</td>
+                      <td>${escapeHtml(pmRole)}</td>
+                      <td>${escapeHtml(approver)}</td>
+                    </tr>
+                  `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="legal-section legal-note-box">
+        <h3>5. 변경·추가업무 및 지급 기준</h3>
+        ${renderDocumentBullets([
+          "프로젝트 규모, 용도, 연면적, 예산, 일정, 설계범위가 변경되는 경우 업무범위와 용역비를 재협의합니다.",
+          "회의, 현장방문, 보고서, 견적비교, 계약검토, 대외협의 횟수가 현저히 증가하는 경우 추가 업무로 봅니다.",
+          "인허가, 민원, 분쟁, 금융기관 대응, 임대·매각 준비 등 계약 외 업무는 별도 합의 후 수행합니다.",
+          "지급 구조 예시는 계약 체결 20%, 기본설계 완료 20%, 시공사 계약 20%, 공정 50% 20%, 사용승인·정산 20%입니다.",
+          "실비와 외부 전문가 비용은 사전 승인 범위에서 별도 정산합니다.",
+        ])}
+      </section>
+    </article>
+  `;
+}
+
 function buildContractDraft(card, result) {
   const projectName = card.querySelector(".project-name").value || "프로젝트";
   const includedOptions = result.includedOptionItems.map((option) => `${option.label}: ${option.description}`);
@@ -1122,6 +1342,113 @@ ${toContractList(paidOptions)}
 대표자:
 연락처:
 서명/날인:`;
+}
+
+function buildContractDraftHtml(card, result) {
+  const projectName = card.querySelector(".project-name").value || "프로젝트";
+  const includedOptions = result.includedOptionItems.map((option) => `${option.label}: ${option.description}`);
+  const paidOptions = result.selectedPaidOptions.map((option) => {
+    const feeText = `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`;
+    return `${option.label}: ${option.description} (${feeText})`;
+  });
+  const taskItems = getVisibleTaskTitles(result.packageKey);
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
+  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
+  const total = result.subtotal + vat;
+  const articles = [
+    ["제1조 [목적]", ["본 계약은 갑의 건축사업 수행을 위하여 을이 사업관리, 일정관리, 비용관리, 품질관리, 커뮤니케이션 관리 및 의사결정 지원 업무를 수행하는 데 필요한 권리·의무, 업무범위, 대가, 책임범위를 정함을 목적으로 한다."]],
+    ["제2조 [계약문서의 구성 및 우선순위]", ["계약문서는 본 계약서, 별첨 1 업무범위표, 별첨 2 산출내역서, 별첨 3 선택 옵션 내역, 회의록 또는 변경합의서로 구성한다.", "계약문서 간 내용이 충돌하는 경우 변경합의서, 계약서, 별첨 업무범위표, 산출내역서 순으로 우선 적용한다.", "구두 지시, 문자, 이메일, 메신저 등은 계약금액 또는 업무범위를 변경하는 효력을 갖지 않으며, 변경은 서면 또는 전자문서 합의로 한다."]],
+    ["제3조 [용어의 정의]", ["PM 용역은 갑의 의사결정을 지원하고 프로젝트의 일정, 비용, 품질, 리스크, 커뮤니케이션을 관리하는 업무를 말한다.", "기본 업무는 선택 패키지와 별첨 업무범위표에 포함된 업무를 말한다.", "추가 업무는 본 계약 체결 후 갑의 요청 또는 프로젝트 사정 변경으로 새로 발생하거나 선택한 옵션 업무를 말한다.", "관리대상 사업비는 PM비 산정 기준이 되는 설계비, 감리비, 인허가비, 철거비, 시공비, 인테리어 공사비, 각종 부담금, 예비비 등 건축 관련 비용을 말한다."]],
+    ["제4조 [프로젝트 개요 및 용역 수행 방식]", [`선택 패키지: ${result.selectedPackage.label} (${result.selectedPackage.description})`, `참여 방식: ${result.selectedPackage.engagement}`, `주요 범위: ${result.selectedPackage.scope}`, `제외 또는 제한 범위: ${result.selectedPackage.excludes}`]],
+    ["제5조 [기본 업무 범위]", taskItems],
+    ["제6조 [패키지 포함 업무]", includedOptions.length ? includedOptions : ["해당 없음"]],
+    ["제7조 [추가 선택 업무]", paidOptions.length ? paidOptions : ["해당 없음"]],
+    ["제8조 [업무 결과물 및 보고]", ["을은 업무 수행 과정에서 필요한 경우 회의록, 이슈리스트, 일정표, 견적 비교표, 변경관리표, 기성검토 의견, 준공점검표, 정산검토 의견 등 업무 성격에 맞는 결과물을 제공한다.", "결과물의 형식은 문서, 표, 이메일, 회의록, 온라인 공유문서 등 프로젝트 운영에 적합한 방식으로 한다.", "을의 검토 의견은 갑의 의사결정을 돕기 위한 관리 의견이며, 법정 설계·감리·시공·전문기술 검토를 대체하지 않는다."]],
+    ["제9조 [갑의 의무]", ["갑은 을의 업무 수행에 필요한 사업 목적, 예산, 일정, 설계도서, 견적서, 계약서, 인허가 자료, 시공사 제출자료 등 관련 자료를 적시에 제공한다.", "갑은 을의 검토 의견을 참고하여 최종 의사결정을 하며, 발주자 고유의 의사결정 책임은 갑에게 있다.", "자료 제공 지연, 의사결정 지연 또는 자료 미제공으로 인한 일정 지연은 을의 귀책으로 보지 않는다."]],
+    ["제10조 [을의 의무]", ["을은 계약 범위 내 업무를 선량한 관리자의 주의로 성실히 수행한다.", "을은 프로젝트의 주요 이슈, 일정 지연 가능성, 비용 증가 가능성, 의사결정 필요사항을 갑에게 보고한다.", "을은 갑의 승인 없이 갑을 대리하여 설계계약, 공사계약, 금융계약, 임대차계약, 매매계약을 체결하거나 금전 지급을 확정하지 않는다."]],
+    ["제11조 [용역비 및 산출내역]", [`기본 PM비: ${formatWon(result.baseFee)}`, `사업비 연동 관리보수: ${formatWon(result.linkedFee)} (적용 요율 ${formatPercent(result.linkedRate)})`, `추가 선택 업무 및 가산금: ${formatWon(result.optionFee)}`, `공급가액 합계: ${formatWon(result.subtotal)}`, `부가가치세: ${formatWon(vat)}`, `총 계약 예정금액: ${formatWon(total)}`]],
+    ["제12조 [지급 방법]", ["갑은 용역비를 단계별 지급 또는 월정액과 마일스톤 정산 방식 중 계약 체결 시 선택한 방식으로 지급한다.", "단계별 지급 예시는 계약 체결 20%, 설계자 선정 또는 기본설계 완료 20%, 시공사 선정·계약 체결 20%, 착공 후 공정 50% 시점 20%, 사용승인·정산 완료 20%로 한다.", `월정액 옵션이 포함된 경우 해당 옵션 용역비는 예정 용역기간 ${result.months}개월을 기준으로 산정한다.`]],
+    ["제13조 [실비 및 외부비용]", ["교통비, 지방 출장비, 도면 출력비, 등본·인허가 서류 발급비, 외부 전문가 검토비 등 실비는 별도 정산한다.", "변호사, 세무사, 공인중개사, 구조·전기·소방 등 전문기술자, 감정평가사 등 외부 전문가 비용은 갑이 직접 계약하거나 사전 승인한 범위에서 별도 부담한다."]],
+    ["제14조 [업무 변경 및 추가 업무]", ["프로젝트 규모, 용도, 연면적, 예산, 일정, 설계범위가 변경되는 경우 을은 용역기간 또는 용역비 조정을 요청할 수 있다.", "갑의 요청으로 회의, 현장방문, 보고서, 견적비교, 계약검토, 대외협의 횟수가 현저히 증가하는 경우 추가 업무로 본다.", "추가 업무는 갑과 을이 업무범위, 기간, 금액을 서면 또는 전자문서로 합의한 후 수행한다."]],
+    ["제15조 [업무 제외 및 책임 제한]", ["본 용역은 건축주를 위한 사업관리 및 의사결정 지원 업무이며, 건축사법상 설계업무, 법정 감리업무, 건설업자의 시공업무, 법률대리, 세무자문, 금융상품 알선, 부동산 중개행위를 대체하지 않는다.", "을의 검토 의견은 갑의 의사결정을 돕기 위한 참고자료이며, 최종 계약 체결, 비용 지급, 설계변경 승인, 시공사 선정, 임대·매각 조건 확정은 갑의 책임으로 한다."]],
+    ["제16조 [성과보수 및 특수 업무]", ["VE 절감액, PF 실행, 임대 성사, 매각 성과 등 성과보수는 본 계약에 포함하지 않으며 별도 특약으로 정한다.", "PF, 임대, 매각 관련 업무는 자료 작성, 일정관리, 조건검토, 외부 전문가 또는 중개사 협업관리 범위로 제한되며 직접 알선 또는 중개행위로 해석하지 않는다."]],
+    ["제17조 [자료 및 지식재산권]", ["갑이 제공한 도면, 견적서, 계약서, 사업자료의 소유권은 갑 또는 해당 권리자에게 있다.", "을이 작성한 회의록, 검토표, 관리표, 보고자료 등 결과물은 본 프로젝트 목적 범위에서 갑이 사용할 수 있다."]],
+    ["제18조 [비밀유지]", ["갑과 을은 본 계약 수행 과정에서 알게 된 상대방의 영업상·기술상·재무상 정보 및 프로젝트 자료를 상대방의 사전 동의 없이 제3자에게 누설하거나 계약 목적 외로 사용하지 않는다."]],
+    ["제19조 [계약기간, 중지 및 해지]", ["본 계약기간은 계약 체결일부터 예정 용역기간 종료일까지로 한다. 다만 사용승인, 정산, 하자보증 인수 등 마무리 업무가 남은 경우 갑과 을은 필요한 범위에서 기간을 연장할 수 있다.", "갑 또는 을이 본 계약상 의무를 중대하게 위반하고 상대방이 상당한 기간을 정하여 시정을 요구하였음에도 시정하지 않는 경우 상대방은 계약을 해지할 수 있다.", "계약이 중도 해지되는 경우 갑은 해지 시점까지 수행된 업무와 이미 발생한 실비, 외부비용, 착수된 옵션 업무비를 정산하여 지급한다."]],
+    ["제20조 [분쟁 해결]", ["본 계약과 관련하여 분쟁이 발생한 경우 갑과 을은 우선 협의로 해결한다.", "협의가 이루어지지 않는 경우 관할 법원은 [관할 법원 기재]로 한다."]],
+  ];
+
+  return `
+    <article class="legal-page">
+      <header class="legal-cover">
+        <p>Bigplanner Partners</p>
+        <h2>PM(Project Management) 용역계약서</h2>
+        <span>계약 체결 전 검토용 초안</span>
+      </header>
+      <section class="legal-section">
+        <h3>계약 기본사항</h3>
+        ${renderDocumentTable([
+          ["문서번호", buildDocumentNumber("PM-CNTR")],
+          ["계약명", `${projectName} PM 용역`],
+          ["프로젝트명", projectName],
+          ["프로젝트 위치", "[주소 기재]"],
+          ["공사규모", "[대지면적, 연면적, 층수, 주요 용도 기재]"],
+          ["발주자(갑)", "[상호/성명, 주소, 연락처 기재]"],
+          ["PM 수행자(을)", "빅플래너 파트너스 / [사업자 정보 기재]"],
+          ["관리대상 사업비", formatWon(result.managedCost)],
+          ["관리대상 사업비 세부", includedCostLines.length ? includedCostLines.join(", ") : "미입력"],
+          ["제외 또는 별도 참고 사업비", excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"],
+          ["선택 패키지", result.selectedPackage.label],
+          ["예정 용역기간", `계약 체결일로부터 ${result.months}개월`],
+          ["계약금액", `공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}`],
+          ["계약일", "[YYYY. MM. DD.]"],
+        ])}
+      </section>
+      <section class="legal-section legal-attachments">
+        <h3>계약문서 및 별첨</h3>
+        ${renderDocumentBullets(["별첨 1. PM 업무범위표", "별첨 2. 산출내역서", "별첨 3. 선택 옵션 내역", "별첨 4. 변경합의서 또는 회의록(해당 시)"])}
+      </section>
+      <section class="legal-section legal-articles">
+        <h3>계약 일반조건</h3>
+        ${articles
+          .map(
+            ([title, items]) => `
+              <section class="legal-article">
+                <h4>${escapeHtml(title)}</h4>
+                ${renderDocumentBullets(items)}
+              </section>
+            `,
+          )
+          .join("")}
+      </section>
+      <section class="legal-section legal-note-box">
+        <h3>특약</h3>
+        ${renderDocumentBullets(["[특약사항 기재]", "본 계약서와 특약이 충돌하는 경우 명시적으로 달리 정한 특약이 우선한다."])}
+      </section>
+      <section class="legal-section legal-signature">
+        <p>위 계약의 성립을 증명하기 위하여 계약서 2부를 작성하고 갑과 을이 서명 또는 날인한 후 각 1부씩 보관한다.</p>
+        <div class="signature-grid">
+          <div>
+            <strong>갑 발주자</strong>
+            <span>주소:</span>
+            <span>상호/성명:</span>
+            <span>대표자:</span>
+            <span>연락처:</span>
+            <b>서명/날인</b>
+          </div>
+          <div>
+            <strong>을 PM 수행자</strong>
+            <span>주소:</span>
+            <span>상호/성명:</span>
+            <span>대표자:</span>
+            <span>연락처:</span>
+            <b>서명/날인</b>
+          </div>
+        </div>
+      </section>
+    </article>
+  `;
 }
 
 function populatePackageSelect(select) {
@@ -1367,6 +1694,50 @@ function applyPackageDefaults(card, packageKey) {
   card.querySelector(".duration-months").value = selectedPackage.defaultMonths;
 }
 
+function setDocumentTab(card, activeTab) {
+  card.querySelectorAll(".document-tab").forEach((button) => {
+    const isActive = button.dataset.documentTab === activeTab;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+  card.querySelectorAll("[data-document-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.documentPanel !== activeTab;
+  });
+}
+
+function setDocumentOutput(card, { type, text, html, title }) {
+  card.dataset.documentType = type;
+  card.querySelector(".document-draft").value = text;
+  card.querySelector(".document-preview").innerHTML = html || renderPlainDocumentHtml(title, text);
+  setDocumentTab(card, "preview");
+}
+
+function refreshDocumentOutput(card) {
+  const type = card.dataset.documentType;
+  if (!type) return;
+  const result = calculateProject(card);
+  if (type === "proposal") {
+    const text = buildProposalDraft(card, result);
+    setDocumentOutput(card, { type, text, title: "빅플래너 PM 제안서" });
+  }
+  if (type === "scope") {
+    setDocumentOutput(card, {
+      type,
+      text: buildScopeAttachment(card, result),
+      html: buildScopeAttachmentHtml(card, result),
+      title: "PM 업무범위표",
+    });
+  }
+  if (type === "contract") {
+    setDocumentOutput(card, {
+      type,
+      text: buildContractDraft(card, result),
+      html: buildContractDraftHtml(card, result),
+      title: "PM 용역계약서",
+    });
+  }
+}
+
 function createProject(initialPackage = "standard") {
   const fragment = elements.template.content.cloneNode(true);
   const card = fragment.querySelector(".project-card");
@@ -1409,19 +1780,36 @@ function createProject(initialPackage = "standard") {
     applyDiagnosis(card);
   });
 
+  fragment.querySelectorAll(".document-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+      setDocumentTab(card, button.dataset.documentTab);
+    });
+  });
+
   fragment.querySelector(".proposal-generate").addEventListener("click", () => {
     const result = calculateProject(card);
-    card.querySelector(".document-draft").value = buildProposalDraft(card, result);
+    const text = buildProposalDraft(card, result);
+    setDocumentOutput(card, { type: "proposal", text, title: "빅플래너 PM 제안서" });
   });
 
   fragment.querySelector(".scope-generate").addEventListener("click", () => {
     const result = calculateProject(card);
-    card.querySelector(".document-draft").value = buildScopeAttachment(card, result);
+    setDocumentOutput(card, {
+      type: "scope",
+      text: buildScopeAttachment(card, result),
+      html: buildScopeAttachmentHtml(card, result),
+      title: "PM 업무범위표",
+    });
   });
 
   fragment.querySelector(".contract-generate").addEventListener("click", () => {
     const result = calculateProject(card);
-    card.querySelector(".document-draft").value = buildContractDraft(card, result);
+    setDocumentOutput(card, {
+      type: "contract",
+      text: buildContractDraft(card, result),
+      html: buildContractDraftHtml(card, result),
+      title: "PM 용역계약서",
+    });
   });
 
   fragment.querySelectorAll("input, select").forEach((input) => {
@@ -1429,12 +1817,14 @@ function createProject(initialPackage = "standard") {
       if (input.classList.contains("cost-component")) formatAmountInput(input);
       if (input.classList.contains("option-check")) syncOptionCards(card);
       updateCard(card);
+      refreshDocumentOutput(card);
       if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });
     input.addEventListener("change", () => {
       if (input.classList.contains("cost-component")) formatAmountInput(input);
       if (input.classList.contains("option-check")) syncOptionCards(card);
       updateCard(card);
+      refreshDocumentOutput(card);
       if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });
   });
