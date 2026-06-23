@@ -472,6 +472,7 @@ const elements = {
   template: document.querySelector("#projectTemplate"),
   stickyBaseAmount: document.querySelector("#stickyBaseAmount"),
   stickyLinkedAmount: document.querySelector("#stickyLinkedAmount"),
+  stickyLinkedRate: document.querySelector("#stickyLinkedRate"),
   stickyOptionAmount: document.querySelector("#stickyOptionAmount"),
   stickyGrandAmount: document.querySelector("#stickyGrandAmount"),
 };
@@ -754,6 +755,7 @@ function updateSummary(result) {
 
   elements.stickyBaseAmount.textContent = formatWon(result.baseFee);
   elements.stickyLinkedAmount.textContent = formatWon(result.linkedFee);
+  elements.stickyLinkedRate.textContent = `적용 요율 ${formatPercent(result.linkedRate)}`;
   elements.stickyOptionAmount.textContent = formatWon(result.optionFee);
   elements.stickyGrandAmount.textContent = formatWon(result.subtotal + vat);
 }
