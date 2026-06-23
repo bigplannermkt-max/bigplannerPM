@@ -1241,15 +1241,6 @@ function createProject(initialPackage = "standard") {
     updateCard(card);
   });
 
-  fragment.querySelectorAll(".cost-step").forEach((button) => {
-    button.addEventListener("click", () => {
-      const input = card.querySelector(".cost-primary");
-      input.value = Math.max(0, readNumber(input) + Number(button.dataset.step || 0));
-      updateCard(card);
-      updateDiagnosis(card);
-    });
-  });
-
   fragment.querySelectorAll(".diagnosis-choice").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.classList.contains("is-selected")));
     button.addEventListener("click", () => {
