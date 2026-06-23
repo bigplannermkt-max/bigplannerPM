@@ -454,6 +454,15 @@ const intensityDescriptions = {
   high: "고관여형: 주 1~2회 현장 방문, 공사비·기성·VE·민원·클레임 1차 대응 강화",
 };
 
+const phaseFeeWeights = [
+  { prefix: "A.", weight: 1.05, note: "착수·기획 기준 정리" },
+  { prefix: "B.", weight: 1.15, note: "설계자 선정·설계관리" },
+  { prefix: "C.", weight: 1.2, note: "인허가·견적·계약 검토" },
+  { prefix: "D.", weight: 0.85, note: "착공 전 관리체계 세팅" },
+  { prefix: "E.", weight: 1.35, note: "공사 진행·기성·변경 관리" },
+  { prefix: "F.", weight: 0.9, note: "준공·인수인계·정산" },
+];
+
 const deliverables = [
   "사업범위 정리표",
   "초기 예산 프레임",
@@ -705,6 +714,7 @@ function calculateProject(card) {
 
   const packageBaseFee = pickFromRange(selectedPackage.baseRange, intensity, selectedPackage.baseWeight);
   const baseFee = Math.max(packageBaseFee, selectedPackage.minimum * MANWON);
+  const baseBreakdown = calculateBaseFeeBreakdown(packageKey, baseFee);
   const linkedRate = pickFromRange(selectedPackage.rateRange, intensity, selectedPackage.rateWeight) / MANWON;
   const linkedFee = managedCost * linkedRate;
 
@@ -722,6 +732,7 @@ function calculateProject(card) {
 
   return {
     baseFee,
+    baseBreakdown,
     linkedFee,
     optionFee: optionFee + successFee + expenseFee + manualAdjustment,
     subtotal,
@@ -747,6 +758,7 @@ function updateCard(card) {
 
   updateCostBreakdown(card, result.managedCost);
   card.querySelector(".base-fee").textContent = formatWon(result.baseFee);
+  renderBaseFeeBreakdown(card, result);
   card.querySelector(".linked-fee").textContent = formatWon(result.linkedFee);
   card.querySelector(".option-fee").textContent = formatWon(result.optionFee);
   card.querySelector(".project-total").textContent = formatWon(displayTotal);
@@ -771,11 +783,49 @@ function updateSummary(result) {
   elements.stickyGrandRate.textContent = result.managedCost > 0 ? `사업비 대비 ${formatPercent(grandRate)}` : "사업비 대비 -";
 }
 
-function getVisibleTaskTitles(packageKey) {
+function getVisibleTasks(packageKey) {
   const allowedNumbers = new Set(packageTaskNumbers[packageKey] ?? packageTaskNumbers.standard);
   return pmTasks
-    .filter((task) => allowedNumbers.has(task.no) && !optionTaskTitlesShownElsewhere.has(task.title))
+    .filter((task) => allowedNumbers.has(task.no) && !optionTaskTitlesShownElsewhere.has(task.title));
+}
+
+function getVisibleTaskTitles(packageKey) {
+  return getVisibleTasks(packageKey)
     .map((task) => `${task.phase} - ${task.title}: ${task.description}`);
+}
+
+function getPhaseFeeWeight(phase) {
+  return phaseFeeWeights.find((item) => phase.startsWith(item.prefix)) ?? { weight: 1, note: "기본 PM 업무" };
+}
+
+function calculateBaseFeeBreakdown(packageKey, baseFee) {
+  const visibleTasks = getVisibleTasks(packageKey);
+  const phases = [...new Set(visibleTasks.map((task) => task.phase))];
+  const rows = phases.map((phase) => {
+    const tasks = visibleTasks.filter((task) => task.phase === phase);
+    const rule = getPhaseFeeWeight(phase);
+    return {
+      phase,
+      taskCount: tasks.length,
+      note: rule.note,
+      rawWeight: tasks.length * rule.weight,
+    };
+  });
+  const totalWeight = rows.reduce((sum, row) => sum + row.rawWeight, 0) || 1;
+  let assigned = 0;
+
+  return rows.map((row, index) => {
+    const amount =
+      index === rows.length - 1
+        ? Math.max(0, baseFee - assigned)
+        : Math.round(((baseFee * row.rawWeight) / totalWeight) / MANWON) * MANWON;
+    assigned += amount;
+    return {
+      ...row,
+      amount,
+      share: baseFee > 0 ? amount / baseFee : 0,
+    };
+  });
 }
 
 function getSelectedOptionLabels(result) {
@@ -1193,11 +1243,51 @@ function applyDiagnosis(card) {
   updateCard(card);
 }
 
+function renderBaseFeeBreakdown(card, result) {
+  const container = card.querySelector(".base-fee-breakdown");
+  if (!container) return;
+
+  const rows = result.baseBreakdown ?? [];
+  const totalTasks = rows.reduce((sum, row) => sum + row.taskCount, 0);
+  const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0);
+
+  container.innerHTML = `
+    <div class="base-fee-breakdown__head">
+      <div>
+        <strong>기본 PM비 상세 내역</strong>
+        <span>패키지 포함 업무를 단계별 업무 수와 관리 난이도 가중치로 배분한 내부 산정표입니다.</span>
+      </div>
+      <div>
+        <small>기본 PM비 합계</small>
+        <b>${formatWon(totalAmount)}</b>
+      </div>
+    </div>
+    <div class="base-fee-breakdown__rows">
+      ${rows
+        .map(
+          (row) => `
+            <article>
+              <div>
+                <strong>${row.phase}</strong>
+                <span>${row.note} · ${row.taskCount}개 업무 · ${formatPercent(row.share)}</span>
+              </div>
+              <b>${formatWon(row.amount)}</b>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+    <p>총 ${totalTasks}개 기본 업무 기준입니다. 소계는 설명용 배분이며, 실제 청구 기준 기본 PM비 총액은 ${formatWon(result.baseFee)}입니다.</p>
+  `;
+
+  rows.forEach((row) => {
+    const badge = card.querySelector(`.pm-task-phase-subtotal[data-phase="${CSS.escape(row.phase)}"]`);
+    if (badge) badge.textContent = formatWon(row.amount);
+  });
+}
+
 function populatePmTasks(grid, packageKey) {
-  const allowedNumbers = new Set(packageTaskNumbers[packageKey] ?? packageTaskNumbers.standard);
-  const visibleTasks = pmTasks.filter(
-    (task) => allowedNumbers.has(task.no) && !optionTaskTitlesShownElsewhere.has(task.title),
-  );
+  const visibleTasks = getVisibleTasks(packageKey);
   const phases = [...new Set(visibleTasks.map((task) => task.phase))];
 
   grid.innerHTML = "";
@@ -1205,7 +1295,14 @@ function populatePmTasks(grid, packageKey) {
   phases.forEach((phase) => {
     const group = document.createElement("section");
     group.className = "pm-task-phase";
-    group.innerHTML = `<h3>${phase}</h3>`;
+    const heading = document.createElement("h3");
+    const subtotal = document.createElement("span");
+    subtotal.className = "pm-task-phase-subtotal";
+    subtotal.dataset.phase = phase;
+    subtotal.textContent = "-";
+    heading.append(document.createTextNode(phase));
+    heading.append(subtotal);
+    group.append(heading);
 
     const list = document.createElement("div");
     list.className = "pm-task-phase__list";
