@@ -364,13 +364,79 @@ select:focus {
 }
 
 .cost-field {
-  grid-column: auto;
+  grid-column: 1 / -1;
 }
 
 .cost-buttons {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.cost-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cost-summary div {
+  min-height: 72px;
+  padding: 11px;
+  background: #eef7f2;
+  border: 1px solid rgba(18, 111, 76, 0.16);
+  border-radius: 8px;
+}
+
+.cost-summary small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.cost-summary strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--green-dark);
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.cost-breakdown {
+  display: grid;
+  gap: 10px;
+}
+
+.cost-breakdown section {
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.cost-breakdown h3 {
+  margin: 0;
+  color: var(--green-dark);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.cost-breakdown p {
+  margin: 5px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cost-component-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cost-component-grid label span {
+  font-size: 12px;
 }
 
 .cost-step {
@@ -388,17 +454,6 @@ select:focus {
 .cost-step:hover {
   border-color: var(--green);
   color: var(--green-dark);
-}
-
-.cost-readable {
-  display: block;
-  min-height: 28px;
-  padding: 6px 10px;
-  color: var(--green-dark);
-  background: #eef7f2;
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.2;
 }
 
 .money-input input,
@@ -888,8 +943,13 @@ select:focus {
     grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
   }
 
+  .cost-summary,
+  .cost-component-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .cost-field {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 }
 
@@ -930,5 +990,10 @@ select:focus {
 
   .cost-buttons {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cost-summary,
+  .cost-component-grid {
+    grid-template-columns: 1fr;
   }
 }

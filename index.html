@@ -91,16 +91,124 @@
           <label class="cost-field">
             <span>관리대상 사업비</span>
             <div class="cost-control">
-              <div class="money-input">
-                <input class="managed-cost" type="number" min="0" step="10000000" />
-                <em>원</em>
+              <input class="managed-cost" type="hidden" />
+              <div class="cost-summary">
+                <div>
+                  <small>PM 수수료 산정 기준</small>
+                  <strong class="cost-readable">0원</strong>
+                </div>
+                <div>
+                  <small>제외 참고 사업비</small>
+                  <strong class="excluded-readable">0원</strong>
+                </div>
+                <div>
+                  <small>전체 개발비 참고</small>
+                  <strong class="development-readable">0원</strong>
+                </div>
               </div>
-              <strong class="cost-readable">0원</strong>
               <div class="cost-buttons" aria-label="사업비 빠른 조정">
                 <button class="cost-step" type="button" data-step="-100000000">-1억</button>
                 <button class="cost-step" type="button" data-step="-10000000">-1천만</button>
                 <button class="cost-step" type="button" data-step="10000000">+1천만</button>
                 <button class="cost-step" type="button" data-step="100000000">+1억</button>
+              </div>
+              <div class="cost-breakdown">
+                <section>
+                  <h3>포함 사업비</h3>
+                  <p>기획서 기준 건축 PM 수수료 산정에 반영합니다.</p>
+                  <div class="cost-component-grid">
+                    <label>
+                      <span>설계비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="included" data-cost-key="design" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>감리비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="included" data-cost-key="supervision" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>인허가비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="included" data-cost-key="permit" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>철거비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="included" data-cost-key="demolition" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>시공비</span>
+                      <div class="money-input">
+                        <input class="cost-component cost-primary" data-cost-kind="included" data-cost-key="construction" type="number" min="0" step="10000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>인테리어 공사비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="included" data-cost-key="interior" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>각종 부담금</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="included" data-cost-key="charges" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>예비비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="included" data-cost-key="contingency" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                  </div>
+                </section>
+                <section class="cost-excluded">
+                  <h3>제외 또는 별도 참고</h3>
+                  <p>토지비·취득세·금융비·매각가는 기본 건축 PM 요율에 넣지 않습니다.</p>
+                  <div class="cost-component-grid">
+                    <label>
+                      <span>토지비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="land" type="number" min="0" step="10000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>취득세</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="tax" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>금융비</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="finance" type="number" min="0" step="1000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                    <label>
+                      <span>매각가</span>
+                      <div class="money-input">
+                        <input class="cost-component" data-cost-kind="excluded" data-cost-key="sale" type="number" min="0" step="10000000" />
+                        <em>원</em>
+                      </div>
+                    </label>
+                  </div>
+                </section>
               </div>
             </div>
           </label>

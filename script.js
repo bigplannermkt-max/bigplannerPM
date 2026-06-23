@@ -406,6 +406,32 @@ const costBrackets = [
   { max: Infinity, label: "100억 이상", baseRange: [12000, 22000], rateRange: [0.0015, 0.003], totalRange: [0, 0] },
 ];
 
+const costDefaultShares = {
+  design: 0.07,
+  supervision: 0.03,
+  permit: 0.02,
+  demolition: 0.03,
+  construction: 0.78,
+  interior: 0.02,
+  charges: 0.02,
+  contingency: 0.03,
+};
+
+const costComponentLabels = {
+  design: "설계비",
+  supervision: "감리비",
+  permit: "인허가비",
+  demolition: "철거비",
+  construction: "시공비",
+  interior: "인테리어 공사비",
+  charges: "각종 부담금",
+  contingency: "예비비",
+  land: "토지비",
+  tax: "취득세",
+  finance: "금융비",
+  sale: "매각가",
+};
+
 const intensityWeights = {
   low: 0.25,
   base: 0.5,
@@ -489,7 +515,58 @@ function toContractList(items, fallback = "해당 없음") {
 }
 
 function readNumber(input) {
-  return Number(input.value || 0);
+  return Number(input?.value || 0);
+}
+
+function sumCostComponents(card, kind) {
+  return [...card.querySelectorAll(`.cost-component[data-cost-kind="${kind}"]`)].reduce(
+    (sum, input) => sum + readNumber(input),
+    0,
+  );
+}
+
+function syncManagedCost(card) {
+  const managedCost = sumCostComponents(card, "included");
+  card.querySelector(".managed-cost").value = managedCost;
+  return managedCost;
+}
+
+function distributeDefaultCost(card, totalCost) {
+  const entries = Object.entries(costDefaultShares);
+  let assigned = 0;
+
+  entries.forEach(([key, share], index) => {
+    const input = card.querySelector(`.cost-component[data-cost-key="${key}"]`);
+    if (!input) return;
+    const value =
+      index === entries.length - 1
+        ? Math.max(0, totalCost - assigned)
+        : Math.round((totalCost * share) / MANWON) * MANWON;
+    assigned += value;
+    input.value = value;
+  });
+
+  card.querySelectorAll('.cost-component[data-cost-kind="excluded"]').forEach((input) => {
+    input.value = "";
+  });
+  syncManagedCost(card);
+}
+
+function updateCostBreakdown(card, managedCost) {
+  const excludedCost = sumCostComponents(card, "excluded");
+  card.querySelector(".cost-readable").textContent = formatWon(managedCost);
+  card.querySelector(".excluded-readable").textContent = formatWon(excludedCost);
+  card.querySelector(".development-readable").textContent = formatWon(managedCost + excludedCost);
+}
+
+function getCostBreakdownLines(card, kind) {
+  return [...card.querySelectorAll(`.cost-component[data-cost-kind="${kind}"]`)]
+    .map((input) => ({
+      label: costComponentLabels[input.dataset.costKey] ?? input.dataset.costKey,
+      amount: readNumber(input),
+    }))
+    .filter((item) => item.amount > 0)
+    .map((item) => `${item.label}: ${formatWon(item.amount)}`);
 }
 
 function pickFromRange(range, intensity) {
@@ -515,7 +592,7 @@ function readDiagnosis(card) {
 
 function recommendPackage(card) {
   const values = readDiagnosis(card);
-  const cost = readNumber(card.querySelector(".managed-cost"));
+  const cost = syncManagedCost(card);
   const reasons = [];
   let score = 0;
 
@@ -598,7 +675,7 @@ function calculateProject(card) {
   const optionRule = getPackageOptionRule(packageKey);
   const includedOptions = new Set(optionRule.included);
   const intensity = selectedPackage.intensity;
-  const managedCost = readNumber(card.querySelector(".managed-cost"));
+  const managedCost = syncManagedCost(card);
   const bracket = findCostBracket(managedCost);
   const months = Math.max(1, readNumber(card.querySelector(".duration-months")));
   const successFee = readNumber(card.querySelector(".success-fee"));
@@ -647,11 +724,10 @@ function calculateProject(card) {
 function updateCard(card) {
   const result = calculateProject(card);
   const displayTotal = elements.includeVat.checked ? result.subtotal * (1 + VAT_RATE) : result.subtotal;
-  const managedCost = readNumber(card.querySelector(".managed-cost"));
   const selectedPackage = packages[card.querySelector(".package-select").value];
   const intensity = selectedPackage.intensity;
 
-  card.querySelector(".cost-readable").textContent = formatWon(managedCost);
+  updateCostBreakdown(card, result.managedCost);
   card.querySelector(".base-fee").textContent = formatWon(result.baseFee);
   card.querySelector(".linked-fee").textContent = formatWon(result.linkedFee);
   card.querySelector(".option-fee").textContent = formatWon(result.optionFee);
@@ -691,6 +767,8 @@ function buildProposalDraft(card, result) {
   const optionLines = getSelectedOptionLabels(result);
   const diagnosis = card.querySelector(".diagnosis-reason")?.textContent || "";
   const total = result.subtotal + (elements.includeVat.checked ? result.subtotal * VAT_RATE : 0);
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
 
   return `빅플래너 PM 제안서 문구
 
@@ -705,6 +783,8 @@ ${projectName}의 PM 수수료는 단순히 총사업비에 일정 요율을 곱
 
 3. 산정 기준
 - 관리대상 사업비: ${formatWon(result.managedCost)}
+- 포함 사업비 세부: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
+- 제외 또는 별도 참고: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
 - 예정 기간: ${result.months}개월
 - 기본 PM비: ${formatWon(result.baseFee)}
 - 사업비 연동 보수: ${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})
@@ -725,31 +805,38 @@ function buildScopeAttachment(card, result) {
   const taskItems = getVisibleTaskTitles(result.packageKey);
   const optionLines = getSelectedOptionLabels(result);
   const raciLines = raciItems.map(([area, responsible, pmRole, approver]) => `- ${area}: 책임 ${responsible} / PM 역할 ${pmRole} / 최종 승인 ${approver}`);
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
 
   return `PM 업무범위 별첨
 
 1. 선택 패키지
 - ${result.selectedPackage.label}: ${result.selectedPackage.description}
 
-2. 기본 업무 범위
+2. 관리대상 사업비 산정 기준
+- PM 수수료 기준 사업비: ${formatWon(result.managedCost)}
+- 포함 사업비: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
+- 제외 또는 별도 참고: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
+
+3. 기본 업무 범위
 ${toContractList(taskItems)}
 
-3. 포함 및 추가 선택 업무
+4. 포함 및 추가 선택 업무
 ${toContractList(optionLines)}
 
-4. 주요 산출물
+5. 주요 산출물
 ${toContractList(deliverables)}
 
-5. 책임 구분표(RACI 요약)
+6. 책임 구분표(RACI 요약)
 ${toContractList(raciLines)}
 
-6. 변경·추가업무 발생 기준
+7. 변경·추가업무 발생 기준
 - 프로젝트 규모, 용도, 연면적, 층수, 예산, 품질수준, 설계범위 변경
 - 회의, 현장방문, 보고서, 견적비교, 계약검토, 대외협의 횟수 증가
 - 인허가, 민원, 분쟁, 금융기관 대응, 임대·매각 준비 등 계약 외 업무 발생
 - 발주자 또는 제3자 사유로 인한 용역기간 연장
 
-7. 지급 구조 예시
+8. 지급 구조 예시
 - 단계별 지급: 계약 체결 20%, 기본설계 완료 20%, 시공사 계약 20%, 공정 50% 20%, 사용승인·정산 20%
 - 장기 프로젝트: 월정액 + 마일스톤 정산
 - 실비와 외부 전문가 비용은 별도 정산`;
@@ -763,6 +850,8 @@ function buildContractDraft(card, result) {
     return `${option.label}: ${option.description} (${feeText})`;
   });
   const taskItems = getVisibleTaskTitles(result.packageKey);
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
   const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
   const total = result.subtotal + vat;
 
@@ -776,10 +865,12 @@ function buildContractDraft(card, result) {
 3. 프로젝트 위치: [주소 기재]
 4. 공사규모: [대지면적, 연면적, 층수, 주요 용도 기재]
 5. 관리대상 사업비: ${formatWon(result.managedCost)}
-6. 선택 패키지: ${result.selectedPackage.label}
-7. 예정 용역기간: 계약 체결일로부터 ${result.months}개월
-8. 계약금액: 공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}
-9. 계약일: [YYYY.MM.DD]
+6. 관리대상 사업비 세부: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
+7. 제외 또는 별도 참고 사업비: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
+8. 선택 패키지: ${result.selectedPackage.label}
+9. 예정 용역기간: 계약 체결일로부터 ${result.months}개월
+10. 계약금액: 공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}
+11. 계약일: [YYYY.MM.DD]
 
 제1조 [목적]
 본 계약은 갑의 건축사업 수행을 위하여 을이 사업관리, 일정관리, 비용관리, 품질관리, 커뮤니케이션 관리 및 의사결정 지원 업무를 수행하는 데 필요한 권리·의무, 업무범위, 대가, 책임범위를 정함을 목적으로 한다.
@@ -793,7 +884,7 @@ function buildContractDraft(card, result) {
 1. "PM 용역"이란 갑의 의사결정을 지원하고 프로젝트의 일정, 비용, 품질, 리스크, 커뮤니케이션을 관리하는 업무를 말한다.
 2. "기본 업무"란 제5조 및 별첨 과업범위표에 포함된 업무를 말한다.
 3. "추가 업무"란 본 계약 체결 후 갑의 요청 또는 프로젝트 사정 변경으로 새로 발생하거나 선택한 옵션 업무를 말한다.
-4. "관리대상 사업비"란 본 계약의 PM비 산정 기준이 되는 설계비, 인허가비, 철거비, 시공비, 인테리어 공사비, 부담금, 예비비 등 건축 관련 비용을 말하며, 별도 합의가 없는 한 토지비, 취득세, 금융비, 매각가, 법률·세무·중개수수료는 제외한다.
+4. "관리대상 사업비"란 본 계약의 PM비 산정 기준이 되는 설계비, 감리비, 인허가비, 철거비, 시공비, 인테리어 공사비, 각종 부담금, 예비비 등 건축 관련 비용을 말하며, 별도 합의가 없는 한 토지비, 취득세, 금융비, 매각가, 법률·세무·중개수수료는 제외한다.
 
 제4조 [프로젝트 개요 및 용역 수행 방식]
 1. 선택 패키지의 성격: ${result.selectedPackage.description}
@@ -1121,7 +1212,7 @@ function populateOptionGrid(grid) {
 
 function applyPackageDefaults(card, packageKey) {
   const selectedPackage = packages[packageKey];
-  card.querySelector(".managed-cost").value = selectedPackage.defaultCost;
+  distributeDefaultCost(card, selectedPackage.defaultCost);
   card.querySelector(".duration-months").value = selectedPackage.defaultMonths;
 }
 
@@ -1152,7 +1243,7 @@ function createProject(initialPackage = "standard") {
 
   fragment.querySelectorAll(".cost-step").forEach((button) => {
     button.addEventListener("click", () => {
-      const input = card.querySelector(".managed-cost");
+      const input = card.querySelector(".cost-primary");
       input.value = Math.max(0, readNumber(input) + Number(button.dataset.step || 0));
       updateCard(card);
       updateDiagnosis(card);
@@ -1194,11 +1285,11 @@ function createProject(initialPackage = "standard") {
   fragment.querySelectorAll("input, select").forEach((input) => {
     input.addEventListener("input", () => {
       updateCard(card);
-      if (input.classList.contains("managed-cost")) updateDiagnosis(card);
+      if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });
     input.addEventListener("change", () => {
       updateCard(card);
-      if (input.classList.contains("managed-cost")) updateDiagnosis(card);
+      if (input.classList.contains("cost-component")) updateDiagnosis(card);
     });
   });
 
