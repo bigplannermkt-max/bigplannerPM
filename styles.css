@@ -811,6 +811,12 @@ select:focus {
   background: #e9ece5;
 }
 
+.legal-total-row td {
+  color: #20231f;
+  background: #f4f5f1;
+  font-weight: 900;
+}
+
 .legal-badge {
   display: inline-block;
   padding: 4px 8px;
@@ -880,6 +886,48 @@ select:focus {
   font-family: "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
   font-size: 12px;
   line-height: 1.7;
+}
+
+.estimate-total-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.estimate-total-grid > div {
+  min-height: 82px;
+  padding: 12px;
+  background: #f8faf7;
+  border: 1px solid #d7d9d4;
+}
+
+.estimate-total-grid span,
+.estimate-total-grid strong {
+  display: block;
+}
+
+.estimate-total-grid span {
+  color: #555d55;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.estimate-total-grid strong {
+  margin-top: 8px;
+  color: #20231f;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.estimate-grand-total {
+  color: #fff;
+  background: var(--green-dark) !important;
+  border-color: var(--green-dark) !important;
+}
+
+.estimate-grand-total span,
+.estimate-grand-total strong {
+  color: #fff;
 }
 
 .pm-task-grid {
@@ -1456,6 +1504,10 @@ select:focus {
   }
 
   .signature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .estimate-total-grid {
     grid-template-columns: 1fr;
   }
 

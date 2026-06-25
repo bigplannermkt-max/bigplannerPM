@@ -1165,6 +1165,255 @@ function buildScopeAttachmentHtml(card, result) {
   `;
 }
 
+function buildEstimateDraft(card, result) {
+  const projectName = card.querySelector(".project-name").value || "프로젝트";
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
+  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
+  const total = result.subtotal + vat;
+  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
+  const baseRows = result.baseBreakdown.map(
+    (row) => `- ${row.phase}: ${formatWon(row.amount)} (${row.taskCount}개 업무, ${formatPercent(row.share)})`,
+  );
+  const includedOptions = result.includedOptionItems.map((option) => `- 포함: ${option.label} / ${option.description}`);
+  const paidOptions = result.selectedPaidOptions.map((option) => {
+    const multiplier = option.monthly ? ` x ${result.months}개월` : "";
+    const lineTotal = option.amount * (option.monthly ? result.months : 1);
+    return `- 추가: ${option.label} / 단가 ${option.monthly ? "월 " : ""}${formatWon(option.amount)}${multiplier} = ${formatWon(lineTotal)}`;
+  });
+
+  return `PM 상세 견적서
+
+1. 견적 기본정보
+- 문서번호: ${buildDocumentNumber("PM-EST")}
+- 프로젝트명: ${projectName}
+- 작성일: ${formatDocumentDate()}
+- 선택 패키지: ${result.selectedPackage.label}
+- 예정 용역기간: ${result.months}개월
+- 관리대상 사업비: ${formatWon(result.managedCost)}
+- 견적 유효기간: 작성일로부터 30일
+
+2. 관리대상 사업비 산정 기준
+- 포함 사업비: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
+- 제외 또는 별도 참고 사업비: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
+- 적용 사업비 구간: ${result.bracket.label}
+- 사업비 연동 요율: ${formatPercent(result.linkedRate)}
+
+3. 기본 PM비 상세
+${toContractList(baseRows)}
+- 기본 PM비 합계: ${formatWon(result.baseFee)}
+
+4. 사업비 연동 보수
+- 관리대상 사업비 ${formatWon(result.managedCost)} x ${formatPercent(result.linkedRate)} = ${formatWon(result.linkedFee)}
+
+5. 패키지 포함 및 선택 옵션
+${toContractList([...includedOptions, ...paidOptions])}
+
+6. 가산·조정 항목
+- 성과보수: ${formatWon(result.successFee)}
+- 실비: ${formatWon(result.expenseFee)}
+- 직접 조정: ${formatWon(result.manualAdjustment)}
+
+7. 최종 견적금액
+- 기본 PM비: ${formatWon(result.baseFee)}
+- 사업비 연동 보수: ${formatWon(result.linkedFee)}
+- 옵션·가산·조정: ${formatWon(result.optionFee)}
+- 공급가액 합계: ${formatWon(result.subtotal)}
+- VAT: ${formatWon(vat)}
+- 총 견적금액: ${formatWon(total)}
+- 관리대상 사업비 대비 환산 요율: ${totalRate}
+
+8. 견적 조건
+- 본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.
+- 관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.
+- 실비와 외부 전문가 비용은 사전 승인 범위에서 별도 정산합니다.
+- 본 견적서는 계약 체결 전 검토용 산출내역이며, 최종 계약 시 계약서 및 별첨 산출내역서로 확정합니다.`;
+}
+
+function buildEstimateDraftHtml(card, result) {
+  const projectName = card.querySelector(".project-name").value || "프로젝트";
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
+  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
+  const total = result.subtotal + vat;
+  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
+  const includedOptionRows = result.includedOptionItems.map((option) => ({
+    label: option.label,
+    status: "패키지 포함",
+    unit: "포함",
+    quantity: "-",
+    amount: "포함",
+    note: option.description,
+  }));
+  const paidOptionRows = result.selectedPaidOptions.map((option) => {
+    const quantity = option.monthly ? `${result.months}개월` : "1식";
+    const amount = option.amount * (option.monthly ? result.months : 1);
+    return {
+      label: option.label,
+      status: "추가 선택",
+      unit: `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`,
+      quantity,
+      amount: formatWon(amount),
+      note: option.description,
+    };
+  });
+  const adjustmentRows = [
+    ["성과보수", formatWon(result.successFee)],
+    ["실비", formatWon(result.expenseFee)],
+    ["직접 조정", formatWon(result.manualAdjustment)],
+  ];
+
+  return `
+    <article class="legal-page estimate-page">
+      <header class="legal-cover legal-cover--attachment">
+        <div>
+          <p>PM Fee Estimate</p>
+          <h2>PM 상세 견적서</h2>
+          <span>선택된 전체 산정 조건을 기준으로 작성한 계약 전 검토용 산출내역서</span>
+        </div>
+        <dl>
+          <div><dt>문서번호</dt><dd>${escapeHtml(buildDocumentNumber("PM-EST"))}</dd></div>
+          <div><dt>작성일</dt><dd>${escapeHtml(formatDocumentDate())}</dd></div>
+          <div><dt>유효기간</dt><dd>작성일로부터 30일</dd></div>
+        </dl>
+      </header>
+
+      <section class="legal-section">
+        <h3>1. 견적 기본정보</h3>
+        ${renderDocumentTable([
+          ["프로젝트명", projectName],
+          ["선택 패키지", `${result.selectedPackage.label} / ${result.selectedPackage.description}`],
+          ["예정 용역기간", `${result.months}개월`],
+          ["관리대상 사업비", formatWon(result.managedCost)],
+          ["사업비 구간", result.bracket.label],
+          ["사업비 연동 요율", formatPercent(result.linkedRate)],
+          ["관리대상 사업비 대비 환산 요율", totalRate],
+        ])}
+      </section>
+
+      <section class="legal-section">
+        <h3>2. 관리대상 사업비 산정 기준</h3>
+        ${renderDocumentTable([
+          ["포함 사업비", includedCostLines.length ? includedCostLines.join(", ") : "미입력"],
+          ["제외 또는 별도 참고 사업비", excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"],
+          ["산정 원칙", "토지비, 취득세, 금융비, 매각가는 기본 PM 요율 산정에서 제외하고 설계·인허가·철거·시공·인테리어·부담금·예비비 중심으로 산정"],
+        ])}
+      </section>
+
+      <section class="legal-section">
+        <h3>3. 기본 PM비 단계별 상세</h3>
+        <div class="legal-table-scroll">
+          <table class="legal-table legal-table--wide">
+            <thead>
+              <tr>
+                <th>단계</th>
+                <th>산정 기준</th>
+                <th>업무 수</th>
+                <th>비율</th>
+                <th>소계</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${result.baseBreakdown
+                .map(
+                  (row) => `
+                    <tr>
+                      <td>${escapeHtml(row.phase)}</td>
+                      <td>${escapeHtml(row.note)}</td>
+                      <td>${row.taskCount}개</td>
+                      <td>${formatPercent(row.share)}</td>
+                      <td><strong>${formatWon(row.amount)}</strong></td>
+                    </tr>
+                  `,
+                )
+                .join("")}
+              <tr class="legal-total-row">
+                <td colspan="4">기본 PM비 합계</td>
+                <td><strong>${formatWon(result.baseFee)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="legal-section">
+        <h3>4. 옵션 및 가산 내역</h3>
+        <div class="legal-table-scroll">
+          <table class="legal-table legal-table--wide">
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>상태</th>
+                <th>단가</th>
+                <th>수량/기간</th>
+                <th>금액</th>
+                <th>비고</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                [...includedOptionRows, ...paidOptionRows].length
+                  ? [...includedOptionRows, ...paidOptionRows]
+                      .map(
+                        (row) => `
+                          <tr>
+                            <td>${escapeHtml(row.label)}</td>
+                            <td><span class="legal-badge">${escapeHtml(row.status)}</span></td>
+                            <td>${escapeHtml(row.unit)}</td>
+                            <td>${escapeHtml(row.quantity)}</td>
+                            <td>${escapeHtml(row.amount)}</td>
+                            <td>${escapeHtml(row.note)}</td>
+                          </tr>
+                        `,
+                      )
+                      .join("")
+                  : `<tr><td colspan="6">선택 또는 포함된 옵션 업무가 없습니다.</td></tr>`
+              }
+              ${adjustmentRows
+                .filter(([, amount]) => amount !== "0원")
+                .map(
+                  ([label, amount]) => `
+                    <tr>
+                      <td>${escapeHtml(label)}</td>
+                      <td><span class="legal-badge">가산/조정</span></td>
+                      <td>-</td>
+                      <td>1식</td>
+                      <td>${escapeHtml(amount)}</td>
+                      <td>사용자 입력 조정값</td>
+                    </tr>
+                  `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="legal-section">
+        <h3>5. 최종 견적금액</h3>
+        <div class="estimate-total-grid">
+          <div><span>기본 PM비</span><strong>${formatWon(result.baseFee)}</strong></div>
+          <div><span>사업비 연동 보수</span><strong>${formatWon(result.linkedFee)}</strong></div>
+          <div><span>옵션·가산·조정</span><strong>${formatWon(result.optionFee)}</strong></div>
+          <div><span>공급가액</span><strong>${formatWon(result.subtotal)}</strong></div>
+          <div><span>VAT</span><strong>${formatWon(vat)}</strong></div>
+          <div class="estimate-grand-total"><span>총 견적금액</span><strong>${formatWon(total)}</strong></div>
+        </div>
+      </section>
+
+      <section class="legal-section legal-note-box">
+        <h3>6. 견적 조건</h3>
+        ${renderDocumentBullets([
+          "본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.",
+          "관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.",
+          "실비와 외부 전문가 비용은 사전 승인 범위에서 별도 정산합니다.",
+          "본 견적서는 계약 체결 전 검토용 산출내역이며, 최종 계약 시 계약서 및 별첨 산출내역서로 확정합니다.",
+        ])}
+      </section>
+    </article>
+  `;
+}
+
 function buildContractDraft(card, result) {
   const projectName = card.querySelector(".project-name").value || "프로젝트";
   const includedOptions = result.includedOptionItems.map((option) => `${option.label}: ${option.description}`);
@@ -1728,6 +1977,14 @@ function refreshDocumentOutput(card) {
       title: "PM 업무범위표",
     });
   }
+  if (type === "estimate") {
+    setDocumentOutput(card, {
+      type,
+      text: buildEstimateDraft(card, result),
+      html: buildEstimateDraftHtml(card, result),
+      title: "PM 상세 견적서",
+    });
+  }
   if (type === "contract") {
     setDocumentOutput(card, {
       type,
@@ -1790,6 +2047,16 @@ function createProject(initialPackage = "standard") {
     const result = calculateProject(card);
     const text = buildProposalDraft(card, result);
     setDocumentOutput(card, { type: "proposal", text, title: "빅플래너 PM 제안서" });
+  });
+
+  fragment.querySelector(".estimate-generate").addEventListener("click", () => {
+    const result = calculateProject(card);
+    setDocumentOutput(card, {
+      type: "estimate",
+      text: buildEstimateDraft(card, result),
+      html: buildEstimateDraftHtml(card, result),
+      title: "PM 상세 견적서",
+    });
   });
 
   fragment.querySelector(".scope-generate").addEventListener("click", () => {
