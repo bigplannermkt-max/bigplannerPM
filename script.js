@@ -553,6 +553,194 @@ function buildDocumentNumber(prefix) {
   return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-001`;
 }
 
+function getContractTotal(result) {
+  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
+  return result.subtotal + vat;
+}
+
+function clampPercent(value) {
+  return Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function getPaymentMethod(card) {
+  return card.querySelector(".payment-method:checked")?.value || "milestone";
+}
+
+function getPaymentTerms(card, result) {
+  const total = getContractTotal(result);
+  const method = getPaymentMethod(card);
+
+  if (method === "monthly") {
+    const months = Math.max(1, result.months);
+    const monthlyAmount = Math.floor(total / months / MANWON) * MANWON;
+    const timing = card.querySelector(".payment-monthly-timing")?.value === "arrears" ? "매월 말 후청구" : "매월 선청구";
+    const dayValue = card.querySelector(".payment-monthly-day")?.value || "10";
+    const day = dayValue === "end" ? "매월 말일" : `매월 ${dayValue}일`;
+
+    return {
+      method,
+      title: "B안. 프로젝트 기간 월정액",
+      summary: `${formatWon(total)}을 ${months}개월 동안 월 ${formatWon(monthlyAmount)} 기준으로 청구`,
+      rows: Array.from({ length: months }, (_, index) => ({
+        label: `${index + 1}개월차 월정액`,
+        condition: `${timing}, ${day}`,
+        rate: 100 / months,
+        amount: index === months - 1 ? Math.max(0, total - monthlyAmount * (months - 1)) : monthlyAmount,
+      })),
+      total,
+      rateTotal: 100,
+      isBalanced: true,
+      note: `월정액은 예정 용역기간 ${months}개월 기준이며, 계약기간 변경 시 잔여 기간과 수행 범위에 따라 재산정할 수 있습니다.`,
+    };
+  }
+
+  const contractRate = clampPercent(readNumber(card.querySelector(".payment-contract-rate")));
+  const finalRate = clampPercent(readNumber(card.querySelector(".payment-final-rate")));
+  const midRows = [...card.querySelectorAll(".payment-mid-row")].map((row, index) => {
+    const rate = clampPercent(readNumber(row.querySelector(".payment-mid-rate")));
+    const name = row.querySelector(".payment-mid-name")?.value?.trim() || `${index + 1}차 중도금`;
+    return {
+      label: name,
+      condition: row.querySelector(".payment-mid-condition")?.value?.trim() || "상호 합의한 마일스톤 도달 시",
+      rate,
+      amount: total * (rate / 100),
+    };
+  });
+  const rows = [
+    { label: "계약금", condition: "계약 체결 및 착수 시", rate: contractRate, amount: total * (contractRate / 100) },
+    ...midRows,
+    { label: "잔금", condition: "최종 산출물 제출 및 용역 완료 시", rate: finalRate, amount: total * (finalRate / 100) },
+  ].filter((row) => row.rate > 0 || row.label === "잔금");
+  const rateTotal = rows.reduce((sum, row) => sum + row.rate, 0);
+
+  return {
+    method,
+    title: "A안. 계약금·중도금·잔금",
+    summary: `계약금 ${contractRate}%, 중도금 ${midRows.length}회, 잔금 ${finalRate}%`,
+    rows,
+    total,
+    rateTotal,
+    isBalanced: Math.abs(rateTotal - 100) < 0.01,
+    note: "각 지급 단계의 세부 지급일과 지급 조건은 계약 체결 시 프로젝트 일정표와 함께 확정합니다.",
+  };
+}
+
+function getPaymentTextLines(card, result) {
+  const terms = getPaymentTerms(card, result);
+  return [
+    `- 지급 방식: ${terms.title}`,
+    `- 지급 요약: ${terms.summary}`,
+    ...terms.rows.map((row) => `- ${row.label}: ${row.rate.toFixed(1).replace(/\.0$/, "")}% / ${formatWon(row.amount)} / ${row.condition}`),
+    `- 합계: ${formatWon(terms.rows.reduce((sum, row) => sum + row.amount, 0))}${terms.isBalanced ? "" : ` (비율 합계 ${terms.rateTotal.toFixed(1).replace(/\.0$/, "")}%, 100% 확인 필요)`}`,
+    `- 비고: ${terms.note}`,
+  ];
+}
+
+function renderPaymentTableHtml(card, result) {
+  const terms = getPaymentTerms(card, result);
+  return `
+    <div class="legal-table-scroll">
+      <table class="legal-table legal-table--wide">
+        <thead>
+          <tr>
+            <th>구분</th>
+            <th>지급 조건</th>
+            <th>비율</th>
+            <th>금액</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${terms.rows
+            .map(
+              (row) => `
+                <tr>
+                  <td>${escapeHtml(row.label)}</td>
+                  <td>${escapeHtml(row.condition)}</td>
+                  <td>${row.rate.toFixed(1).replace(/\.0$/, "")}%</td>
+                  <td><strong>${formatWon(row.amount)}</strong></td>
+                </tr>
+              `,
+            )
+            .join("")}
+          <tr class="legal-total-row">
+            <td colspan="2">${escapeHtml(terms.title)}</td>
+            <td>${terms.rateTotal.toFixed(1).replace(/\.0$/, "")}%</td>
+            <td><strong>${formatWon(terms.rows.reduce((sum, row) => sum + row.amount, 0))}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="legal-payment-note">${escapeHtml(terms.note)}${terms.isBalanced ? "" : " 지급 비율 합계가 100%가 아니므로 계약 확정 전 조정이 필요합니다."}</p>
+  `;
+}
+
+function renderPaymentMidRows(card, resetRates = false) {
+  const list = card.querySelector(".payment-mid-list");
+  if (!list) return;
+  const countInput = card.querySelector(".payment-mid-count");
+  const count = Math.min(12, Math.max(0, Math.round(readNumber(countInput))));
+  countInput.value = count;
+  const existing = [...list.querySelectorAll(".payment-mid-row")].map((row) => ({
+    name: row.querySelector(".payment-mid-name")?.value || "",
+    rate: readNumber(row.querySelector(".payment-mid-rate")),
+    condition: row.querySelector(".payment-mid-condition")?.value || "",
+  }));
+  const contractRate = clampPercent(readNumber(card.querySelector(".payment-contract-rate")));
+  const finalRateInput = card.querySelector(".payment-final-rate");
+  if (count === 0 && resetRates && finalRateInput) finalRateInput.value = Math.max(0, 100 - contractRate);
+  const finalRate = clampPercent(readNumber(finalRateInput));
+  const distributable = Math.max(0, 100 - contractRate - finalRate);
+  const baseRate = count > 0 ? Math.floor(distributable / count) : 0;
+  let assigned = 0;
+
+  list.innerHTML = "";
+  Array.from({ length: count }, (_, index) => {
+    const saved = existing[index] || {};
+    const rate =
+      resetRates || !saved.rate
+        ? index === count - 1
+          ? Math.max(0, distributable - assigned)
+          : baseRate
+        : saved.rate;
+    assigned += rate;
+    const row = document.createElement("label");
+    row.className = "payment-mid-row";
+    row.innerHTML = `
+      <span>${index + 1}차 중도금</span>
+      <input class="payment-mid-name" type="text" value="${escapeHtml(saved.name || `${index + 1}차 중도금`)}" />
+      <div class="percent-input">
+        <input class="payment-mid-rate" type="number" min="0" max="100" step="1" value="${rate}" />
+        <em>%</em>
+      </div>
+      <input class="payment-mid-condition" type="text" value="${escapeHtml(saved.condition || "주요 마일스톤 완료 시")}" />
+    `;
+    list.append(row);
+  });
+}
+
+function syncPaymentUi(card, result = null) {
+  const method = getPaymentMethod(card);
+  card.querySelectorAll(".payment-method-card").forEach((label) => {
+    const input = label.querySelector(".payment-method");
+    label.classList.toggle("is-selected", input.checked);
+  });
+  const milestone = card.querySelector(".payment-config--milestone");
+  const monthly = card.querySelector(".payment-config--monthly");
+  if (milestone) milestone.hidden = method !== "milestone";
+  if (monthly) monthly.hidden = method !== "monthly";
+
+  if (result) {
+    const terms = getPaymentTerms(card, result);
+    const status = card.querySelector(".payment-rate-status");
+    if (status) {
+      status.textContent = `합계 ${terms.rateTotal.toFixed(1).replace(/\.0$/, "")}%${terms.isBalanced ? "" : " / 조정 필요"}`;
+      status.classList.toggle("is-warning", !terms.isBalanced);
+    }
+    const monthlySummary = card.querySelector(".payment-monthly-summary");
+    if (monthlySummary) monthlySummary.textContent = getPaymentTerms(card, { ...result }).summary;
+  }
+}
+
 function renderDocumentTable(rows) {
   return `
     <table class="legal-table">
@@ -812,6 +1000,7 @@ function updateCard(card) {
   const intensity = selectedPackage.intensity;
 
   updateCostBreakdown(card, result.managedCost);
+  syncPaymentUi(card, result);
   card.querySelector(".base-fee").textContent = formatWon(result.baseFee);
   renderBaseFeeBreakdown(card, result);
   card.querySelector(".linked-fee").textContent = formatWon(result.linkedFee);
@@ -965,6 +1154,7 @@ function buildScopeAttachment(card, result) {
   const raciLines = raciItems.map(([area, responsible, pmRole, approver]) => `- ${area}: 책임 ${responsible} / PM 역할 ${pmRole} / 최종 승인 ${approver}`);
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
+  const paymentLines = getPaymentTextLines(card, result);
 
   return `PM 업무범위 별첨
 
@@ -994,10 +1184,8 @@ ${toContractList(raciLines)}
 - 인허가, 민원, 분쟁, 금융기관 대응, 임대·매각 준비 등 계약 외 업무 발생
 - 발주자 또는 제3자 사유로 인한 용역기간 연장
 
-8. 지급 구조 예시
-- 단계별 지급: 계약 체결 20%, 기본설계 완료 20%, 시공사 계약 20%, 공정 50% 20%, 사용승인·정산 20%
-- 장기 프로젝트: 월정액 + 마일스톤 정산
-- 실비와 외부 전문가 비용은 별도 정산`;
+8. 비용 결제 조건
+${toContractList(paymentLines)}`;
 }
 
 function buildScopeAttachmentHtml(card, result) {
@@ -1157,9 +1345,13 @@ function buildScopeAttachmentHtml(card, result) {
           "프로젝트 규모, 용도, 연면적, 예산, 일정, 설계범위가 변경되는 경우 업무범위와 용역비를 재협의합니다.",
           "회의, 현장방문, 보고서, 견적비교, 계약검토, 대외협의 횟수가 현저히 증가하는 경우 추가 업무로 봅니다.",
           "인허가, 민원, 분쟁, 금융기관 대응, 임대·매각 준비 등 계약 외 업무는 별도 합의 후 수행합니다.",
-          "지급 구조 예시는 계약 체결 20%, 기본설계 완료 20%, 시공사 계약 20%, 공정 50% 20%, 사용승인·정산 20%입니다.",
+          `선택 지급 조건은 ${getPaymentTerms(card, result).title}이며, 계약서 제12조와 산출내역서에 동일하게 반영합니다.`,
           "실비와 외부 전문가 비용은 사전 승인 범위에서 별도 정산합니다.",
         ])}
+      </section>
+      <section class="legal-section">
+        <h3>6. 비용 결제 조건</h3>
+        ${renderPaymentTableHtml(card, result)}
       </section>
     </article>
   `;
@@ -1181,6 +1373,7 @@ function buildEstimateDraft(card, result) {
     const lineTotal = option.amount * (option.monthly ? result.months : 1);
     return `- 추가: ${option.label} / 단가 ${option.monthly ? "월 " : ""}${formatWon(option.amount)}${multiplier} = ${formatWon(lineTotal)}`;
   });
+  const paymentLines = getPaymentTextLines(card, result);
 
   return `PM 상세 견적서
 
@@ -1223,7 +1416,10 @@ ${toContractList([...includedOptions, ...paidOptions])}
 - 총 견적금액: ${formatWon(total)}
 - 관리대상 사업비 대비 환산 요율: ${totalRate}
 
-8. 견적 조건
+8. 비용 결제 조건
+${toContractList(paymentLines)}
+
+9. 견적 조건
 - 본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.
 - 관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.
 - 실비와 외부 전문가 비용은 사전 승인 범위에서 별도 정산합니다.
@@ -1402,7 +1598,12 @@ function buildEstimateDraftHtml(card, result) {
       </section>
 
       <section class="legal-section legal-note-box">
-        <h3>6. 견적 조건</h3>
+        <h3>6. 비용 결제 조건</h3>
+        ${renderPaymentTableHtml(card, result)}
+      </section>
+
+      <section class="legal-section legal-note-box">
+        <h3>7. 견적 조건</h3>
         ${renderDocumentBullets([
           "본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.",
           "관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.",
@@ -1426,6 +1627,7 @@ function buildContractDraft(card, result) {
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
   const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
   const total = result.subtotal + vat;
+  const paymentLines = getPaymentTextLines(card, result);
 
   return `PM(Project Management) 용역계약서 초안
 
@@ -1505,11 +1707,9 @@ ${toContractList(paidOptions)}
 7. 위 금액은 현재 입력된 관리대상 사업비, 선택 패키지, 선택 옵션, 예정 용역기간을 기준으로 산정한 금액이며, 실제 계약 체결 시 산출내역서를 별첨한다.
 
 제12조 [지급 방법]
-1. 갑은 용역비를 아래 지급 방식 중 하나로 지급한다. 최종 방식은 계약 체결 시 선택한다.
-   가. 단계별 지급: 계약 체결 시 20%, 설계자 선정 또는 기본설계 완료 시 20%, 시공사 선정·계약 체결 시 20%, 착공 후 공정 50% 시점 20%, 사용승인·정산 완료 시 20%
-   나. 월정액 + 마일스톤 정산: 월정액 업무는 매월 말 청구하고, 단계별 또는 옵션 업무는 해당 업무 착수 또는 완료 시 청구한다.
-2. 월정액 옵션이 포함된 경우, 해당 옵션 용역비는 예정 용역기간 ${result.months}개월을 기준으로 산정한다.
-3. 갑이 지급기일을 지체하는 경우 을은 상당한 기간을 정하여 이행을 최고할 수 있으며, 지체가 계속될 때에는 업무를 일시 중지할 수 있다.
+1. 갑은 용역비를 본 계약서에 선택된 아래 지급 조건에 따라 지급한다.
+${paymentLines.map((line, index) => `${index + 2}. ${line.replace(/^- /, "")}`).join("\n")}
+${paymentLines.length + 2}. 갑이 지급기일을 지체하는 경우 을은 상당한 기간을 정하여 이행을 최고할 수 있으며, 지체가 계속될 때에는 업무를 일시 중지할 수 있다.
 
 제13조 [실비 및 외부비용]
 1. 교통비, 지방 출장비, 숙박비, 도면 출력비, 등본·인허가 서류 발급비, 외부 전문가 검토비 등 실비는 별도 정산한다.
@@ -1605,6 +1805,7 @@ function buildContractDraftHtml(card, result) {
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
   const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
   const total = result.subtotal + vat;
+  const paymentLines = getPaymentTextLines(card, result).map((line) => line.replace(/^- /, ""));
   const articles = [
     ["제1조 [목적]", ["본 계약은 갑의 건축사업 수행을 위하여 을이 사업관리, 일정관리, 비용관리, 품질관리, 커뮤니케이션 관리 및 의사결정 지원 업무를 수행하는 데 필요한 권리·의무, 업무범위, 대가, 책임범위를 정함을 목적으로 한다."]],
     ["제2조 [계약문서의 구성 및 우선순위]", ["계약문서는 본 계약서, 별첨 1 업무범위표, 별첨 2 산출내역서, 별첨 3 선택 옵션 내역, 회의록 또는 변경합의서로 구성한다.", "계약문서 간 내용이 충돌하는 경우 변경합의서, 계약서, 별첨 업무범위표, 산출내역서 순으로 우선 적용한다.", "구두 지시, 문자, 이메일, 메신저 등은 계약금액 또는 업무범위를 변경하는 효력을 갖지 않으며, 변경은 서면 또는 전자문서 합의로 한다."]],
@@ -1617,7 +1818,7 @@ function buildContractDraftHtml(card, result) {
     ["제9조 [갑의 의무]", ["갑은 을의 업무 수행에 필요한 사업 목적, 예산, 일정, 설계도서, 견적서, 계약서, 인허가 자료, 시공사 제출자료 등 관련 자료를 적시에 제공한다.", "갑은 을의 검토 의견을 참고하여 최종 의사결정을 하며, 발주자 고유의 의사결정 책임은 갑에게 있다.", "자료 제공 지연, 의사결정 지연 또는 자료 미제공으로 인한 일정 지연은 을의 귀책으로 보지 않는다."]],
     ["제10조 [을의 의무]", ["을은 계약 범위 내 업무를 선량한 관리자의 주의로 성실히 수행한다.", "을은 프로젝트의 주요 이슈, 일정 지연 가능성, 비용 증가 가능성, 의사결정 필요사항을 갑에게 보고한다.", "을은 갑의 승인 없이 갑을 대리하여 설계계약, 공사계약, 금융계약, 임대차계약, 매매계약을 체결하거나 금전 지급을 확정하지 않는다."]],
     ["제11조 [용역비 및 산출내역]", [`기본 PM비: ${formatWon(result.baseFee)}`, `사업비 연동 관리보수: ${formatWon(result.linkedFee)} (적용 요율 ${formatPercent(result.linkedRate)})`, `추가 선택 업무 및 가산금: ${formatWon(result.optionFee)}`, `공급가액 합계: ${formatWon(result.subtotal)}`, `부가가치세: ${formatWon(vat)}`, `총 계약 예정금액: ${formatWon(total)}`]],
-    ["제12조 [지급 방법]", ["갑은 용역비를 단계별 지급 또는 월정액과 마일스톤 정산 방식 중 계약 체결 시 선택한 방식으로 지급한다.", "단계별 지급 예시는 계약 체결 20%, 설계자 선정 또는 기본설계 완료 20%, 시공사 선정·계약 체결 20%, 착공 후 공정 50% 시점 20%, 사용승인·정산 완료 20%로 한다.", `월정액 옵션이 포함된 경우 해당 옵션 용역비는 예정 용역기간 ${result.months}개월을 기준으로 산정한다.`]],
+    ["제12조 [지급 방법]", ["갑은 용역비를 본 계약서에 선택된 지급 조건에 따라 지급한다.", ...paymentLines, "갑이 지급기일을 지체하는 경우 을은 상당한 기간을 정하여 이행을 최고할 수 있으며, 지체가 계속될 때에는 업무를 일시 중지할 수 있다."]],
     ["제13조 [실비 및 외부비용]", ["교통비, 지방 출장비, 도면 출력비, 등본·인허가 서류 발급비, 외부 전문가 검토비 등 실비는 별도 정산한다.", "변호사, 세무사, 공인중개사, 구조·전기·소방 등 전문기술자, 감정평가사 등 외부 전문가 비용은 갑이 직접 계약하거나 사전 승인한 범위에서 별도 부담한다."]],
     ["제14조 [업무 변경 및 추가 업무]", ["프로젝트 규모, 용도, 연면적, 예산, 일정, 설계범위가 변경되는 경우 을은 용역기간 또는 용역비 조정을 요청할 수 있다.", "갑의 요청으로 회의, 현장방문, 보고서, 견적비교, 계약검토, 대외협의 횟수가 현저히 증가하는 경우 추가 업무로 본다.", "추가 업무는 갑과 을이 업무범위, 기간, 금액을 서면 또는 전자문서로 합의한 후 수행한다."]],
     ["제15조 [업무 제외 및 책임 제한]", ["본 용역은 건축주를 위한 사업관리 및 의사결정 지원 업무이며, 건축사법상 설계업무, 법정 감리업무, 건설업자의 시공업무, 법률대리, 세무자문, 금융상품 알선, 부동산 중개행위를 대체하지 않는다.", "을의 검토 의견은 갑의 의사결정을 돕기 위한 참고자료이며, 최종 계약 체결, 비용 지급, 설계변경 승인, 시공사 선정, 임대·매각 조건 확정은 갑의 책임으로 한다."]],
@@ -1653,6 +1854,10 @@ function buildContractDraftHtml(card, result) {
           ["계약금액", `공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}`],
           ["계약일", "[YYYY. MM. DD.]"],
         ])}
+      </section>
+      <section class="legal-section">
+        <h3>비용 결제 조건</h3>
+        ${renderPaymentTableHtml(card, result)}
       </section>
       <section class="legal-section legal-attachments">
         <h3>계약문서 및 별첨</h3>
@@ -2031,6 +2236,7 @@ function createProject(initialPackage = "standard") {
   const packageCardGrid = fragment.querySelector(".package-card-grid");
   const pmTaskGrid = fragment.querySelector(".pm-task-grid");
   const optionGrid = fragment.querySelector(".option-grid");
+  const paymentBlock = fragment.querySelector(".payment-block");
 
   populatePackageSelect(packageSelect);
   populatePackageCards(packageCardGrid, packageSelect, card);
@@ -2039,6 +2245,7 @@ function createProject(initialPackage = "standard") {
   packageSelect.value = initialPackage;
   applyPackageDefaults(fragment, initialPackage);
   populatePmTasks(pmTaskGrid, initialPackage);
+  renderPaymentMidRows(fragment, true);
   syncPackageCards(fragment);
 
   packageSelect.addEventListener("change", () => {
@@ -2064,6 +2271,19 @@ function createProject(initialPackage = "standard") {
 
   fragment.querySelector(".apply-diagnosis").addEventListener("click", () => {
     applyDiagnosis(card);
+  });
+
+  paymentBlock.addEventListener("input", (event) => {
+    if (event.target.classList.contains("payment-mid-count")) renderPaymentMidRows(card, true);
+    updateCard(card);
+    refreshDocumentOutput(card);
+  });
+
+  paymentBlock.addEventListener("change", (event) => {
+    if (event.target.classList.contains("payment-method")) syncPaymentUi(card);
+    if (event.target.classList.contains("payment-mid-count")) renderPaymentMidRows(card, true);
+    updateCard(card);
+    refreshDocumentOutput(card);
   });
 
   fragment.querySelectorAll(".document-tab").forEach((button) => {

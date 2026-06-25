@@ -423,6 +423,85 @@
           <p class="calculation-note"></p>
         </div>
 
+        <div class="payment-block flow-section">
+          <div class="option-block__head">
+            <strong><span class="step-marker">06</span> 비용 결제 조건</strong>
+            <span>계약서와 견적서에 반영할 지급 방식을 선택</span>
+          </div>
+          <div class="payment-method-grid">
+            <label class="payment-method-card is-selected">
+              <input class="payment-method" type="radio" name="paymentMethod" value="milestone" checked />
+              <span>
+                <strong>A안. 계약금·중도금·잔금</strong>
+                <small>계약금, 0회 이상 중도금, 잔금 비율을 직접 설정합니다.</small>
+              </span>
+            </label>
+            <label class="payment-method-card">
+              <input class="payment-method" type="radio" name="paymentMethod" value="monthly" />
+              <span>
+                <strong>B안. 프로젝트 기간 월정액</strong>
+                <small>총 계약금액을 예정 용역기간 개월 수로 나누어 매월 균등 청구합니다.</small>
+              </span>
+            </label>
+          </div>
+          <div class="payment-config payment-config--milestone">
+            <div class="payment-config__head">
+              <strong>A안 지급 비율</strong>
+              <span class="payment-rate-status">합계 100%</span>
+            </div>
+            <div class="payment-grid">
+              <label>
+                <span>계약금</span>
+                <div class="percent-input">
+                  <input class="payment-contract-rate" type="number" min="0" max="100" step="1" value="30" />
+                  <em>%</em>
+                </div>
+              </label>
+              <label>
+                <span>중도금 횟수</span>
+                <div class="percent-input">
+                  <input class="payment-mid-count" type="number" min="0" max="12" step="1" value="2" />
+                  <em>회</em>
+                </div>
+              </label>
+              <label>
+                <span>잔금</span>
+                <div class="percent-input">
+                  <input class="payment-final-rate" type="number" min="0" max="100" step="1" value="10" />
+                  <em>%</em>
+                </div>
+              </label>
+            </div>
+            <div class="payment-mid-list"></div>
+          </div>
+          <div class="payment-config payment-config--monthly" hidden>
+            <div class="payment-config__head">
+              <strong>B안 월정액</strong>
+              <span class="payment-monthly-summary">예정 기간 기준 자동 산정</span>
+            </div>
+            <div class="payment-grid">
+              <label>
+                <span>청구 방식</span>
+                <select class="payment-monthly-timing">
+                  <option value="advance">매월 선청구</option>
+                  <option value="arrears">매월 말 후청구</option>
+                </select>
+              </label>
+              <label>
+                <span>청구일</span>
+                <select class="payment-monthly-day">
+                  <option value="5">매월 5일</option>
+                  <option value="10">매월 10일</option>
+                  <option value="15">매월 15일</option>
+                  <option value="25">매월 25일</option>
+                  <option value="end">매월 말일</option>
+                </select>
+              </label>
+            </div>
+            <p>월정액은 VAT 포함 표시 여부에 따라 총 계약금액을 예정 용역기간으로 나누어 산정합니다.</p>
+          </div>
+        </div>
+
         <div class="proposal-block flow-section">
           <div class="option-block__head">
             <strong><span class="step-marker">06</span> 제안·업무범위·계약 문서</strong>
