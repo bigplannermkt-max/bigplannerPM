@@ -1975,10 +1975,12 @@ function downloadDocumentPdf(card) {
 
   setDocumentTab(card, "preview");
   output.classList.add("is-printing");
+  document.body.classList.add("is-document-printing");
   document.title = `${projectName}_${documentTitle}`;
 
   const cleanup = () => {
     output.classList.remove("is-printing");
+    document.body.classList.remove("is-document-printing");
     document.title = previousTitle;
     window.removeEventListener("afterprint", cleanup);
   };

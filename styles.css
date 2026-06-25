@@ -1544,22 +1544,40 @@ select:focus {
     margin: 14mm;
   }
 
+  html,
   body {
     background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  body * {
-    visibility: hidden !important;
+  body.is-document-printing .topbar,
+  body.is-document-printing .summary-grid,
+  body.is-document-printing .reference-section,
+  body.is-document-printing .table-section > .table-header,
+  body.is-document-printing .project-card > :not(.proposal-block),
+  body.is-document-printing .proposal-block > .option-block__head,
+  body.is-document-printing .document-toolbar,
+  body.is-document-printing .document-draft {
+    display: none !important;
   }
 
-  .document-output.is-printing .document-preview,
-  .document-output.is-printing .document-preview * {
-    visibility: visible !important;
+  body.is-document-printing .app,
+  body.is-document-printing .table-section,
+  body.is-document-printing #projectRoot,
+  body.is-document-printing .project-card,
+  body.is-document-printing .proposal-block,
+  body.is-document-printing .document-output {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    border: 0 !important;
+    box-shadow: none !important;
   }
 
   .document-output.is-printing .document-preview {
-    position: absolute;
-    inset: 0 auto auto 0;
     width: 100%;
     min-height: auto;
     padding: 0;
