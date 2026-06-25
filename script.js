@@ -1956,9 +1956,36 @@ function setDocumentTab(card, activeTab) {
 
 function setDocumentOutput(card, { type, text, html, title }) {
   card.dataset.documentType = type;
+  card.dataset.documentTitle = title;
   card.querySelector(".document-draft").value = text;
   card.querySelector(".document-preview").innerHTML = html || renderPlainDocumentHtml(title, text);
   setDocumentTab(card, "preview");
+}
+
+function downloadDocumentPdf(card) {
+  if (!card.dataset.documentType || card.querySelector(".document-empty")) {
+    window.alert("먼저 제안서, 상세 견적서, 업무범위표 또는 계약서를 작성해주세요.");
+    return;
+  }
+
+  const output = card.querySelector(".document-output");
+  const previousTitle = document.title;
+  const projectName = card.querySelector(".project-name").value || "프로젝트";
+  const documentTitle = card.dataset.documentTitle || "PM 문서";
+
+  setDocumentTab(card, "preview");
+  output.classList.add("is-printing");
+  document.title = `${projectName}_${documentTitle}`;
+
+  const cleanup = () => {
+    output.classList.remove("is-printing");
+    document.title = previousTitle;
+    window.removeEventListener("afterprint", cleanup);
+  };
+
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  window.setTimeout(cleanup, 1000);
 }
 
 function refreshDocumentOutput(card) {
@@ -2041,6 +2068,10 @@ function createProject(initialPackage = "standard") {
     button.addEventListener("click", () => {
       setDocumentTab(card, button.dataset.documentTab);
     });
+  });
+
+  fragment.querySelector(".pdf-download").addEventListener("click", () => {
+    downloadDocumentPdf(card);
   });
 
   fragment.querySelector(".proposal-generate").addEventListener("click", () => {

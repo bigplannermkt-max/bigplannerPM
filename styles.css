@@ -613,6 +613,14 @@ select:focus {
   gap: 12px;
 }
 
+.document-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .document-tabs {
   display: inline-grid;
   grid-template-columns: repeat(2, minmax(120px, auto));
@@ -639,6 +647,10 @@ select:focus {
   color: var(--green-dark);
   background: #fff;
   box-shadow: 0 4px 12px rgba(31, 111, 84, 0.1);
+}
+
+.pdf-download {
+  min-height: 38px;
 }
 
 .document-preview {
@@ -1485,6 +1497,11 @@ select:focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .document-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .document-preview {
     padding: 10px;
   }
@@ -1518,5 +1535,62 @@ select:focus {
 
   .base-fee-breakdown__rows article {
     grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .document-output.is-printing .document-preview,
+  .document-output.is-printing .document-preview * {
+    visibility: visible !important;
+  }
+
+  .document-output.is-printing .document-preview {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    min-height: auto;
+    padding: 0;
+    overflow: visible;
+    background: #fff;
+    border: 0;
+  }
+
+  .document-output.is-printing .legal-page {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .document-output.is-printing .legal-cover {
+    break-inside: avoid;
+  }
+
+  .document-output.is-printing .legal-section,
+  .document-output.is-printing .legal-article,
+  .document-output.is-printing .signature-grid > div {
+    break-inside: avoid;
+  }
+
+  .document-output.is-printing .legal-table-scroll {
+    overflow: visible;
+  }
+
+  .document-output.is-printing .legal-table--wide {
+    min-width: 0;
   }
 }
