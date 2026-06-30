@@ -4,6 +4,22 @@ const CHEONMAN = 10000000;
 const EOK = 100000000;
 let activePaymentBoundary = null;
 
+const bigplannerCompany = {
+  nameKo: "주식회사 빅플래너파트너스",
+  nameEn: "BIG PLANNER Partners Corp.",
+  businessNumber: "265-87-02571",
+  corporateNumber: "110111-8162565",
+  ceo: "박준호",
+  openedAt: "2022년 01월 12일",
+  address: "서울특별시 용산구 회나무로13가길 16, 어반메시1층 씨-102호(이태원동)",
+  headOfficeAddress: "서울특별시 용산구 회나무로13가길 16, 어반메시1층 씨-102호(이태원동)",
+  businessTypes: [
+    { category: "전문, 과학 및 기술서비스업", item: "경영 컨설팅업" },
+    { category: "부동산업", item: "부동산 투자 자문업" },
+    { category: "정보통신업", item: "응용 소프트웨어 개발 및 공급업" },
+  ],
+};
+
 const packages = {
   diagnostic: {
     label: "사전 검토형",
@@ -982,6 +998,44 @@ function renderLegalChips(items, fallback = "해당 없음") {
   return `<div class="legal-chip-list">${list.map((item) => `<span class="legal-chip">${escapeHtml(item)}</span>`).join("")}</div>`;
 }
 
+function getCompanyDisplayName() {
+  return `${bigplannerCompany.nameKo}(${bigplannerCompany.nameEn})`;
+}
+
+function getCompanyBusinessTypeLines() {
+  return bigplannerCompany.businessTypes.map((type) => `${type.category} / ${type.item}`);
+}
+
+function getCompanyInfoRows({ includeOpenedAt = true, includeHeadOffice = false, includeBusinessTypes = true } = {}) {
+  const rows = [
+    ["상호", getCompanyDisplayName()],
+    ["대표자", bigplannerCompany.ceo],
+    ["사업자등록번호", bigplannerCompany.businessNumber],
+    ["법인등록번호", bigplannerCompany.corporateNumber],
+  ];
+
+  if (includeOpenedAt) rows.push(["개업연월일", bigplannerCompany.openedAt]);
+  rows.push(["사업장 소재지", bigplannerCompany.address]);
+  if (includeHeadOffice) rows.push(["본점 소재지", bigplannerCompany.headOfficeAddress]);
+  if (includeBusinessTypes) rows.push(["사업의 종류", { html: renderCompactBullets(getCompanyBusinessTypeLines()) }]);
+  return rows;
+}
+
+function getCompanyInfoTextLines({ includeOpenedAt = true, includeHeadOffice = false, includeBusinessTypes = true } = {}) {
+  const lines = [
+    `상호: ${getCompanyDisplayName()}`,
+    `대표자: ${bigplannerCompany.ceo}`,
+    `사업자등록번호: ${bigplannerCompany.businessNumber}`,
+    `법인등록번호: ${bigplannerCompany.corporateNumber}`,
+  ];
+
+  if (includeOpenedAt) lines.push(`개업연월일: ${bigplannerCompany.openedAt}`);
+  lines.push(`사업장 소재지: ${bigplannerCompany.address}`);
+  if (includeHeadOffice) lines.push(`본점 소재지: ${bigplannerCompany.headOfficeAddress}`);
+  if (includeBusinessTypes) lines.push(`사업의 종류: ${getCompanyBusinessTypeLines().join(" / ")}`);
+  return lines;
+}
+
 function compactText(value, maxLength = 96) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (text.length <= maxLength) return text;
@@ -1115,7 +1169,7 @@ function renderPlainDocumentHtml(title, text) {
   return `
     <article class="legal-page legal-page--plain">
       <header class="legal-cover legal-cover--compact">
-        <p>Bigplanner Partners</p>
+        <p>${escapeHtml(bigplannerCompany.nameEn)}</p>
         <h2>${escapeHtml(title)}</h2>
         <span>작성일 ${formatDocumentDate()}</span>
       </header>
@@ -1697,7 +1751,10 @@ ${toContractList(paymentLines)}
 8. 계약 전 확인사항
 - 본 제안서는 PM 용역 범위와 수수료 산정을 위한 계약 전 제안서입니다.
 - 설계, 감리, 시공, 법률, 세무, 금융상품 알선, 부동산 중개 업무는 별도 전문가 업무로 구분합니다.
-- 프로젝트 규모, 일정, 현장 방문 빈도, 선택 옵션, 대외 협의 범위가 변경될 경우 제안금액과 업무범위는 조정될 수 있습니다.`;
+- 프로젝트 규모, 일정, 현장 방문 빈도, 선택 옵션, 대외 협의 범위가 변경될 경우 제안금액과 업무범위는 조정될 수 있습니다.
+
+9. 제안자 정보
+${toContractList(getCompanyInfoTextLines())}`;
 }
 
 function buildProposalDraftHtml(card, result) {
@@ -1716,7 +1773,7 @@ function buildProposalDraftHtml(card, result) {
     <article class="legal-page proposal-page">
       <header class="legal-cover legal-cover--attachment legal-cover--proposal">
         <div>
-          <p>BIGPLANNER PARTNERS</p>
+          <p>${escapeHtml(bigplannerCompany.nameEn)}</p>
           <h2>빅플래너 PM 제안서</h2>
           <span>발주자 의사결정과 프로젝트 실행을 위한 PM 수행 제안</span>
         </div>
@@ -1805,6 +1862,10 @@ function buildProposalDraftHtml(card, result) {
           "프로젝트 규모, 일정, 현장 방문 빈도, 선택 옵션, 대외 협의 범위가 변경될 경우 제안금액과 업무범위는 조정될 수 있습니다.",
         ])}
       </section>
+      <section class="legal-section">
+        <h3>9. 제안자 정보</h3>
+        ${renderDocumentTable(getCompanyInfoRows())}
+      </section>
     </article>
   `;
 }
@@ -1846,7 +1907,10 @@ ${toContractList(raciLines)}
 - 발주자 또는 제3자 사유로 인한 용역기간 연장
 
 8. 비용 결제 조건
-${toContractList(paymentLines)}`;
+${toContractList(paymentLines)}
+
+9. PM 수행자 정보
+${toContractList(getCompanyInfoTextLines())}`;
 }
 
 function buildScopeAttachmentHtml(card, result) {
@@ -1981,6 +2045,10 @@ function buildScopeAttachmentHtml(card, result) {
         <h3>7. 비용 결제 조건</h3>
         ${renderPaymentTableHtml(card, result)}
       </section>
+      <section class="legal-section">
+        <h3>8. PM 수행자 정보</h3>
+        ${renderDocumentTable(getCompanyInfoRows())}
+      </section>
     </article>
   `;
 }
@@ -2051,7 +2119,10 @@ ${toContractList(paymentLines)}
 - 본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.
 - 관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.
 - 실비와 외부 전문가 비용은 사전 승인 범위에서 별도 정산합니다.
-- 본 견적서는 계약 체결 전 검토용 산출내역이며, 최종 계약 시 계약서 및 별첨 산출내역서로 확정합니다.`;
+- 본 견적서는 계약 체결 전 검토용 산출내역이며, 최종 계약 시 계약서 및 별첨 산출내역서로 확정합니다.
+
+10. 공급자 정보
+${toContractList(getCompanyInfoTextLines())}`;
 }
 
 function buildEstimateDraftHtml(card, result) {
@@ -2196,6 +2267,10 @@ function buildEstimateDraftHtml(card, result) {
           "본 견적서는 계약 체결 전 검토용 산출내역이며, 최종 계약 시 계약서 및 별첨 산출내역서로 확정합니다.",
         ])}
       </section>
+      <section class="legal-section">
+        <h3>9. 공급자 정보</h3>
+        ${renderDocumentTable(getCompanyInfoRows())}
+      </section>
     </article>
   `;
 }
@@ -2223,13 +2298,19 @@ function buildContractDraft(card, result) {
 2. 프로젝트명: ${projectName}
 3. 프로젝트 위치: [주소 기재]
 4. 공사규모: [대지면적, 연면적, 층수, 주요 용도 기재]
-5. 관리대상 사업비: ${formatWon(result.managedCost)}
-6. 관리대상 사업비 세부: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
-7. 제외 또는 별도 참고 사업비: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
-8. 선택 패키지: ${result.selectedPackage.label}
-9. 예정 용역기간: 계약 체결일로부터 ${result.months}개월
-10. 계약금액: 공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}
-11. 계약일: [YYYY.MM.DD]
+5. 발주자(갑): [상호/성명, 주소, 연락처 기재]
+6. PM 수행자(을): ${getCompanyDisplayName()}
+7. 을 사업자등록번호: ${bigplannerCompany.businessNumber}
+8. 을 법인등록번호: ${bigplannerCompany.corporateNumber}
+9. 을 대표자: ${bigplannerCompany.ceo}
+10. 을 사업장 소재지: ${bigplannerCompany.address}
+11. 관리대상 사업비: ${formatWon(result.managedCost)}
+12. 관리대상 사업비 세부: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
+13. 제외 또는 별도 참고 사업비: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
+14. 선택 패키지: ${result.selectedPackage.label}
+15. 예정 용역기간: 계약 체결일로부터 ${result.months}개월
+16. 계약금액: 공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}
+17. 계약일: [YYYY.MM.DD]
 
 제1조 [목적]
 본 계약은 갑의 건축사업 수행을 위하여 을이 사업관리, 일정관리, 비용관리, 품질관리, 커뮤니케이션 관리 및 의사결정 지원 업무를 수행하는 데 필요한 권리·의무, 업무범위, 대가, 책임범위를 정함을 목적으로 한다.
@@ -2371,10 +2452,11 @@ ${toContractList(paidOptions)}
 서명/날인:
 
 을(PM 수행자)
-주소:
-상호/성명:
-대표자:
-연락처:
+주소: ${bigplannerCompany.address}
+상호/성명: ${getCompanyDisplayName()}
+대표자: ${bigplannerCompany.ceo}
+사업자등록번호: ${bigplannerCompany.businessNumber}
+법인등록번호: ${bigplannerCompany.corporateNumber}
 서명/날인:`;
 }
 
@@ -2417,7 +2499,7 @@ function buildContractDraftHtml(card, result) {
   return `
     <article class="legal-page">
       <header class="legal-cover">
-        <p>Bigplanner Partners</p>
+        <p>${escapeHtml(bigplannerCompany.nameEn)}</p>
         <h2>PM(Project Management) 용역계약서</h2>
         <span>계약 체결 전 검토용 초안</span>
       </header>
@@ -2430,7 +2512,12 @@ function buildContractDraftHtml(card, result) {
           ["프로젝트 위치", "[주소 기재]"],
           ["공사규모", "[대지면적, 연면적, 층수, 주요 용도 기재]"],
           ["발주자(갑)", "[상호/성명, 주소, 연락처 기재]"],
-          ["PM 수행자(을)", "빅플래너 파트너스 / [사업자 정보 기재]"],
+          ["PM 수행자(을)", getCompanyDisplayName()],
+          ["을 사업자등록번호", bigplannerCompany.businessNumber],
+          ["을 법인등록번호", bigplannerCompany.corporateNumber],
+          ["을 대표자", bigplannerCompany.ceo],
+          ["을 사업장 소재지", bigplannerCompany.address],
+          ["을 사업의 종류", { html: renderCompactBullets(getCompanyBusinessTypeLines()) }],
           ["관리대상 사업비", formatWon(result.managedCost)],
           ["관리대상 사업비 세부", { html: renderLegalChips(includedCostLines, "미입력") }],
           ["제외 또는 별도 참고 사업비", { html: renderLegalChips(excludedCostLines) }],
@@ -2478,10 +2565,11 @@ function buildContractDraftHtml(card, result) {
           </div>
           <div>
             <strong>을 PM 수행자</strong>
-            <span>주소:</span>
-            <span>상호/성명:</span>
-            <span>대표자:</span>
-            <span>연락처:</span>
+            <span>주소: ${escapeHtml(bigplannerCompany.address)}</span>
+            <span>상호/성명: ${escapeHtml(getCompanyDisplayName())}</span>
+            <span>대표자: ${escapeHtml(bigplannerCompany.ceo)}</span>
+            <span>사업자등록번호: ${escapeHtml(bigplannerCompany.businessNumber)}</span>
+            <span>법인등록번호: ${escapeHtml(bigplannerCompany.corporateNumber)}</span>
             <b>서명/날인</b>
           </div>
         </div>
