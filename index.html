@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>빅플래너 PM 수수료 산정</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=low-vision-summary-compact-20260630c" />
   </head>
   <body>
     <main class="app">
@@ -12,9 +12,11 @@
         <div>
           <p class="eyebrow">Bigplanner Partners</p>
           <h1>PM 수수료 산정</h1>
-          <p class="topbar-copy">프로젝트 조건을 진단하고 관리대상 사업비, 패키지, 옵션을 조합해 PM 제안금액과 문서를 산출합니다.</p>
+          <p class="topbar-copy">사업비와 업무 범위를 기준으로 PM 제안금액, 결제조건, 계약 문서를 한 번에 정리합니다.</p>
         </div>
         <div class="top-actions">
+          <button class="ghost-button theme-toggle" id="themeToggle" type="button" aria-pressed="false">다크모드</button>
+          <button class="ghost-button low-vision-toggle" id="lowVisionToggle" type="button" aria-pressed="false">저시력</button>
           <button class="ghost-button" id="resetProject" type="button">초기화</button>
         </div>
       </section>
@@ -38,6 +40,13 @@
           <strong id="stickyGrandAmount">0원</strong>
           <small id="stickyGrandRate">사업비 대비 -</small>
         </article>
+        <div class="summary-context" aria-label="현재 선택 요약">
+          <span id="stickyPackageName">패키지: 일반 관리형</span>
+          <span id="stickyDuration">기간: -</span>
+          <span id="stickyManagedCost">관리대상 사업비: 0원</span>
+          <span id="stickyPaymentMethod">결제: A안</span>
+          <span id="stickyVatState">VAT 포함</span>
+        </div>
       </section>
 
       <section class="reference-section" aria-label="산정 기준">
@@ -77,8 +86,8 @@
       <article class="project-card">
         <div class="basic-info-block flow-section">
           <div class="option-block__head">
-            <strong>기본 정보</strong>
-            <span>프로젝트명과 예정 기간을 먼저 확인합니다.</span>
+            <strong><span class="step-marker">00</span> 기본정보</strong>
+            <span>프로젝트명과 예정 기간만 먼저 확인합니다.</span>
           </div>
           <div class="project-card__top project-card__top--single">
           <div class="project-title-group">
@@ -105,120 +114,92 @@
         <div class="diagnosis-block flow-section">
           <div class="option-block__head">
             <strong><span class="step-marker">01</span> 프로젝트 진단</strong>
-            <span>답변 기준으로 패키지와 보강 옵션 추천</span>
+            <span>핵심 조건만 선택하면 추천 패키지와 보강 옵션을 바로 확인합니다.</span>
           </div>
           <div class="diagnosis-grid">
-            <section class="diagnosis-group" data-diagnosis-group="experience">
-              <h3>건축주 경험</h3>
-              <div class="diagnosis-card-list">
-                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="experience" data-value="experienced">
-                  <strong>경험 있음</strong>
-                  <span>설계·시공 의사결정 경험이 있어 핵심 검토 중심으로 충분합니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="experience" data-value="some">
-                  <strong>일부 경험</strong>
-                  <span>문서 검토와 계약조건 체크를 보강하면 안정적입니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="experience" data-value="first">
-                  <strong>처음 진행</strong>
-                  <span>설계·견적·계약·현장 이슈를 넓게 관리하는 편이 안전합니다.</span>
-                </button>
+            <div class="diagnosis-question-stack">
+              <section class="diagnosis-group" data-diagnosis-group="stage">
+                <h3>현재 단계</h3>
+                <div class="diagnosis-card-list">
+                  <button class="diagnosis-choice is-selected" type="button" data-diagnosis="stage" data-value="planning">
+                    <strong>기획 전/초기</strong>
+                    <span>예산 프레임과 추진 구조부터 잡는 단계</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="design">
+                    <strong>설계 진행 중</strong>
+                    <span>설계 변경, 인허가, 예산 적합성 확인</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="bid">
+                    <strong>견적·계약 전</strong>
+                    <span>시공사 비교와 계약조건 검토가 핵심</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="construction">
+                    <strong>공사 진행 중</strong>
+                    <span>공정, 기성, 변경, 품질 이슈 관리</span>
+                  </button>
+                </div>
+              </section>
+              <section class="diagnosis-group" data-diagnosis-group="experience">
+                <h3>발주자 관리 여건</h3>
+                <div class="diagnosis-card-list">
+                  <button class="diagnosis-choice is-selected" type="button" data-diagnosis="experience" data-value="experienced">
+                    <strong>직접 관리 가능</strong>
+                    <span>핵심 검토와 의사결정 보조 중심</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="experience" data-value="some">
+                    <strong>검토 지원 필요</strong>
+                    <span>문서, 견적, 계약조건 체크가 필요</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="experience" data-value="first">
+                    <strong>관리 대행 필요</strong>
+                    <span>처음 진행하거나 내부 담당 여력이 부족</span>
+                  </button>
+                </div>
+              </section>
+              <section class="diagnosis-group" data-diagnosis-group="risk">
+                <h3>리스크 수준</h3>
+                <div class="diagnosis-card-list">
+                  <button class="diagnosis-choice is-selected" type="button" data-diagnosis="risk" data-value="low">
+                    <strong>낮음</strong>
+                    <span>설계자·시공사·예산이 비교적 안정적</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="risk" data-value="medium">
+                    <strong>보통</strong>
+                    <span>예산, 일정, 계약 조건을 정기 확인</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="risk" data-value="high">
+                    <strong>높음</strong>
+                    <span>공사비, 민원, 인허가, 시공사 이슈 우려</span>
+                  </button>
+                </div>
+              </section>
+              <section class="diagnosis-group" data-diagnosis-group="site">
+                <h3>외부 협의·현장 관여</h3>
+                <div class="diagnosis-card-list">
+                  <button class="diagnosis-choice is-selected" type="button" data-diagnosis="site" data-value="normal" data-finance-value="no" data-purpose-value="own">
+                    <strong>일반 협의</strong>
+                    <span>월 1~2회 회의와 주요 검토 중심</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="site" data-value="weekly" data-finance-value="no" data-purpose-value="own">
+                    <strong>현장 관리 강화</strong>
+                    <span>주 1회 수준의 공정·기성 확인</span>
+                  </button>
+                  <button class="diagnosis-choice" type="button" data-diagnosis="site" data-value="semi" data-finance-value="yes" data-purpose-value="rental">
+                    <strong>금융·민원 포함</strong>
+                    <span>PF, 금융기관, 민원, 대외자료까지 관리</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+            <aside class="diagnosis-result">
+              <span class="diagnosis-result__eyebrow">실시간 추천</span>
+              <strong class="diagnosis-package">추천 패키지: 일반 관리형</strong>
+              <p class="diagnosis-reason">프로젝트 조건을 선택하면 추천 사유가 표시됩니다.</p>
+              <div class="diagnosis-result__meta">
+                <span class="diagnosis-option-hint">추천 옵션은 패키지 적용 시 함께 표시됩니다.</span>
               </div>
-            </section>
-            <section class="diagnosis-group" data-diagnosis-group="purpose">
-              <h3>사업 목적</h3>
-              <div class="diagnosis-card-list">
-                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="purpose" data-value="own">
-                  <strong>실사용 건물</strong>
-                  <span>품질, 일정, 예산 균형을 중심으로 PM 범위를 잡습니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="purpose" data-value="rental">
-                  <strong>임대 수익형</strong>
-                  <span>임대 조건, 운영 준비, 수익성 검토를 함께 고려합니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="purpose" data-value="sale">
-                  <strong>임대 후 매각</strong>
-                  <span>PF, 임대, 매각자료 준비까지 개발 PM 성격이 강해집니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="purpose" data-value="precheck">
-                  <strong>매입 전 검토</strong>
-                  <span>본 PM 전 빠른 법규·예산·사업성 진단이 우선입니다.</span>
-                </button>
-              </div>
-            </section>
-            <section class="diagnosis-group" data-diagnosis-group="stage">
-              <h3>현재 단계</h3>
-              <div class="diagnosis-card-list">
-                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="stage" data-value="planning">
-                  <strong>기획 전/초기</strong>
-                  <span>목표, 범위, 예산 프레임과 마스터 일정을 잡는 단계입니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="design">
-                  <strong>설계 진행 중</strong>
-                  <span>설계 예산 적합성, 변경관리, 인허가 일정 관리가 중요합니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="bid">
-                  <strong>견적·시공사 선정</strong>
-                  <span>견적 비교, 입찰 패키지, 계약조건 검토가 핵심입니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="stage" data-value="construction">
-                  <strong>공사 진행 중</strong>
-                  <span>공정, 기성, 변경, 품질 이슈를 빠르게 관리해야 합니다.</span>
-                </button>
-              </div>
-            </section>
-            <section class="diagnosis-group" data-diagnosis-group="risk">
-              <h3>리스크 수준</h3>
-              <div class="diagnosis-card-list">
-                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="risk" data-value="low">
-                  <strong>낮음</strong>
-                  <span>설계자와 시공사가 안정적이고 이슈 가능성이 낮습니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="risk" data-value="medium">
-                  <strong>보통</strong>
-                  <span>예산·계약·일정 관리를 정기적으로 확인하는 편이 좋습니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="risk" data-value="high">
-                  <strong>높음</strong>
-                  <span>공사비, 민원, 시공사 신뢰도, 인허가 난도가 걱정됩니다.</span>
-                </button>
-              </div>
-            </section>
-            <section class="diagnosis-group" data-diagnosis-group="finance">
-              <h3>금융 필요</h3>
-              <div class="diagnosis-card-list">
-                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="finance" data-value="no">
-                  <strong>필요 없음</strong>
-                  <span>일반 건축 PM 범위 안에서 비용·일정 관리를 봅니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="finance" data-value="yes">
-                  <strong>PF/대출 대응 필요</strong>
-                  <span>금융기관 자료, 기성, 수지표 대응을 별도로 봐야 합니다.</span>
-                </button>
-              </div>
-            </section>
-            <section class="diagnosis-group" data-diagnosis-group="site">
-              <h3>현장 관여</h3>
-              <div class="diagnosis-card-list">
-                <button class="diagnosis-choice is-selected" type="button" data-diagnosis="site" data-value="normal">
-                  <strong>월 2~4회</strong>
-                  <span>일반 관리형 수준의 정기회의와 현장점검이 적합합니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="site" data-value="weekly">
-                  <strong>주 1회 이상</strong>
-                  <span>공정·기성·변경관리를 더 자주 확인해야 합니다.</span>
-                </button>
-                <button class="diagnosis-choice" type="button" data-diagnosis="site" data-value="semi">
-                  <strong>주 2~3회 이상</strong>
-                  <span>준상주 관리에 가까워 별도 월정액 검토가 필요합니다.</span>
-                </button>
-              </div>
-            </section>
-          </div>
-          <div class="diagnosis-result">
-            <strong class="diagnosis-package">추천 패키지: 일반 관리형</strong>
-            <p class="diagnosis-reason">프로젝트 조건을 선택하면 추천 사유가 표시됩니다.</p>
-            <button class="ghost-button apply-diagnosis" type="button">추천 적용</button>
+              <button class="primary-button apply-diagnosis" type="button">일반 관리형으로 설정</button>
+            </aside>
           </div>
         </div>
 
@@ -357,21 +338,28 @@
           <div class="package-card-grid"></div>
         </div>
 
-        <div class="pm-task-block flow-section">
+        <div class="work-scope-block flow-section">
           <div class="option-block__head">
-            <strong><span class="step-marker">04</span> 기본 PM 업무 리스트</strong>
-            <span>선택한 패키지에 포함되는 세부 관리 업무</span>
+            <strong><span class="step-marker">04</span> 업무 범위</strong>
+            <span>패키지 기본 업무와 추가 선택 옵션을 함께 확인합니다.</span>
           </div>
-          <div class="base-fee-breakdown" aria-live="polite"></div>
-          <div class="pm-task-grid"></div>
-        </div>
-
-        <div class="option-block flow-section">
-          <div class="option-block__head">
-            <strong><span class="step-marker">04</span> 옵션업무</strong>
-            <span>빠진 기본업무 보강 + 특수업무 선택</span>
+          <div class="scope-stack">
+            <section class="pm-task-block scope-subsection">
+              <div class="scope-subhead">
+                <strong>기본 PM 업무</strong>
+                <span>선택 패키지에 포함되는 내부 관리 업무와 단계별 소계</span>
+              </div>
+              <div class="base-fee-breakdown" aria-live="polite"></div>
+              <div class="pm-task-grid"></div>
+            </section>
+            <section class="option-block scope-subsection">
+              <div class="scope-subhead">
+                <strong>추가 선택 업무</strong>
+                <span>패키지 포함 업무와 별도 선택 옵션을 구분해 선택</span>
+              </div>
+              <div class="option-grid"></div>
+            </section>
           </div>
-          <div class="option-grid"></div>
         </div>
 
         <div class="result-block flow-section">
@@ -415,8 +403,20 @@
               <span>옵션·가산</span>
               <strong class="option-fee">0원</strong>
             </div>
+            <div>
+              <span>공급가</span>
+              <strong class="subtotal-fee">0원</strong>
+            </div>
+            <div>
+              <span>VAT</span>
+              <strong class="vat-fee">0원</strong>
+            </div>
+            <div>
+              <span>환산 요율</span>
+              <strong class="converted-rate">-</strong>
+            </div>
             <div class="total-result">
-              <span>제안금액</span>
+              <span>총 제안금액</span>
               <strong class="project-total">0원</strong>
             </div>
           </div>
@@ -449,30 +449,39 @@
               <strong>A안 지급 비율</strong>
               <span class="payment-rate-status">합계 100%</span>
             </div>
+            <div class="payment-allocation-control">
+              <div class="payment-allocation-bar" aria-label="지급 비율 배분 슬라이더"></div>
+              <p>경계 핸들을 움직여 계약금, 중도금, 잔금을 100% 안에서 배분합니다.</p>
+            </div>
             <div class="payment-grid">
               <label>
                 <span>계약금</span>
-                <div class="percent-input">
-                  <input class="payment-contract-rate" type="number" min="0" max="100" step="1" value="30" />
-                  <em>%</em>
-                </div>
-              </label>
-              <label>
-                <span>중도금 횟수</span>
-                <div class="percent-input">
-                  <input class="payment-mid-count" type="number" min="0" max="12" step="1" value="2" />
-                  <em>회</em>
+                <div class="rate-slider-field">
+                  <div class="rate-slider-field__value">
+                    <strong data-payment-rate-display>30%</strong>
+                    <small data-payment-amount-display>총 제안금액 기준 0원</small>
+                  </div>
+                  <input class="payment-contract-rate payment-rate-value" type="hidden" value="30" />
                 </div>
               </label>
               <label>
                 <span>잔금</span>
-                <div class="percent-input">
-                  <input class="payment-final-rate" type="number" min="0" max="100" step="1" value="10" />
-                  <em>%</em>
+                <div class="rate-slider-field">
+                  <div class="rate-slider-field__value">
+                    <strong data-payment-rate-display>10%</strong>
+                    <small data-payment-amount-display>총 제안금액 기준 0원</small>
+                  </div>
+                  <input class="payment-final-rate payment-rate-value" type="hidden" value="10" />
                 </div>
               </label>
             </div>
-            <div class="payment-mid-list"></div>
+            <div class="payment-mid-section">
+              <div class="payment-mid-section__head">
+                <strong>중도금</strong>
+                <button class="payment-mid-add" type="button">+ 중도금 추가</button>
+              </div>
+              <div class="payment-mid-list"></div>
+            </div>
           </div>
           <div class="payment-config payment-config--monthly" hidden>
             <div class="payment-config__head">
@@ -504,13 +513,26 @@
 
         <div class="proposal-block flow-section">
           <div class="option-block__head">
-            <strong><span class="step-marker">06</span> 제안·업무범위·계약 문서</strong>
-            <div class="inline-actions">
-              <button class="primary-button proposal-generate" type="button">제안서 작성</button>
-              <button class="ghost-button estimate-generate" type="button">상세 견적서 작성</button>
-              <button class="ghost-button scope-generate" type="button">업무범위표 작성</button>
-              <button class="ghost-button contract-generate" type="button">계약서 작성</button>
-            </div>
+            <strong><span class="step-marker">07</span> 문서 작성</strong>
+            <span>선택한 산정 조건을 기준으로 필요한 문서를 생성합니다.</span>
+          </div>
+          <div class="document-action-grid" aria-label="문서 작성 버튼">
+            <button class="document-action-card proposal-generate" type="button">
+              <strong>제안서</strong>
+              <span>PM 제안 내용 작성</span>
+            </button>
+            <button class="document-action-card estimate-generate" type="button">
+              <strong>상세 견적서</strong>
+              <span>산출내역과 결제조건 정리</span>
+            </button>
+            <button class="document-action-card scope-generate" type="button">
+              <strong>업무범위표</strong>
+              <span>기본·옵션 업무 별첨 작성</span>
+            </button>
+            <button class="document-action-card contract-generate" type="button">
+              <strong>계약서</strong>
+              <span>PM 용역계약서 초안 작성</span>
+            </button>
           </div>
           <div class="document-output">
             <div class="document-toolbar">
@@ -521,14 +543,14 @@
               <button class="ghost-button pdf-download" type="button">PDF 다운로드</button>
             </div>
             <div class="document-preview" data-document-panel="preview">
-              <div class="document-empty">패키지와 옵션을 선택한 뒤 필요한 문서 작성 버튼을 눌러주세요.</div>
+              <div class="document-empty">문서 작성 버튼을 누르면 미리보기가 표시됩니다.</div>
             </div>
-            <textarea class="document-draft" data-document-panel="raw" readonly hidden placeholder="패키지와 옵션을 선택한 뒤 필요한 문서 작성 버튼을 눌러주세요."></textarea>
+            <textarea class="document-draft" data-document-panel="raw" readonly hidden placeholder="문서 작성 버튼을 누르면 원문이 표시됩니다."></textarea>
           </div>
         </div>
       </article>
     </template>
 
-    <script src="./script.js"></script>
+    <script src="./script.js?v=low-vision-summary-compact-20260630c"></script>
   </body>
 </html>

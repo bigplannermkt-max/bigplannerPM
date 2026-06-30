@@ -2,6 +2,7 @@ const VAT_RATE = 0.1;
 const MANWON = 10000;
 const CHEONMAN = 10000000;
 const EOK = 100000000;
+let activePaymentBoundary = null;
 
 const packages = {
   diagnostic: {
@@ -485,6 +486,8 @@ const raciItems = [
 ];
 
 const elements = {
+  themeToggle: document.querySelector("#themeToggle"),
+  lowVisionToggle: document.querySelector("#lowVisionToggle"),
   resetProject: document.querySelector("#resetProject"),
   includeVat: document.querySelector("#includeVat"),
   projectRoot: document.querySelector("#projectRoot"),
@@ -495,7 +498,55 @@ const elements = {
   stickyOptionAmount: document.querySelector("#stickyOptionAmount"),
   stickyGrandAmount: document.querySelector("#stickyGrandAmount"),
   stickyGrandRate: document.querySelector("#stickyGrandRate"),
+  stickyPackageName: document.querySelector("#stickyPackageName"),
+  stickyDuration: document.querySelector("#stickyDuration"),
+  stickyManagedCost: document.querySelector("#stickyManagedCost"),
+  stickyPaymentMethod: document.querySelector("#stickyPaymentMethod"),
+  stickyVatState: document.querySelector("#stickyVatState"),
 };
+
+const darkModeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+function isDarkModeActive() {
+  if (document.body.classList.contains("theme-dark")) return true;
+  if (document.body.classList.contains("theme-light")) return false;
+  return Boolean(darkModeQuery?.matches);
+}
+
+function syncThemeToggle() {
+  const active = isDarkModeActive();
+  if (!elements.themeToggle) return;
+  elements.themeToggle.classList.toggle("is-active", active);
+  elements.themeToggle.setAttribute("aria-pressed", String(active));
+  elements.themeToggle.textContent = active ? "다크모드 켜짐" : "다크모드";
+}
+
+function setThemeMode(mode) {
+  const isDark = mode === "dark";
+  const isLight = mode === "light";
+  document.body.classList.toggle("theme-dark", isDark);
+  document.body.classList.toggle("theme-light", isLight);
+  if (isDark || isLight) {
+    localStorage.setItem("bigplannerTheme", mode);
+  } else {
+    localStorage.removeItem("bigplannerTheme");
+  }
+  syncThemeToggle();
+}
+
+function syncLowVisionToggle() {
+  const active = document.body.classList.contains("is-low-vision");
+  if (!elements.lowVisionToggle) return;
+  elements.lowVisionToggle.classList.toggle("is-active", active);
+  elements.lowVisionToggle.setAttribute("aria-pressed", String(active));
+  elements.lowVisionToggle.textContent = active ? "저시력 켜짐" : "저시력";
+}
+
+function setLowVisionMode(active) {
+  document.body.classList.toggle("is-low-vision", active);
+  localStorage.setItem("bigplannerLowVision", active ? "1" : "0");
+  syncLowVisionToggle();
+}
 
 function formatWon(amount) {
   const rounded = Math.round(amount / MANWON) * MANWON;
@@ -674,17 +725,154 @@ function renderPaymentTableHtml(card, result) {
   `;
 }
 
-function renderPaymentMidRows(card, resetRates = false) {
+function getPaymentRateParts(card) {
+  return [
+    {
+      label: "계약금",
+      input: card.querySelector(".payment-contract-rate"),
+      field: card.querySelector(".payment-contract-rate")?.closest(".rate-slider-field"),
+    },
+    ...[...card.querySelectorAll(".payment-mid-row")].map((row, index) => ({
+      label: row.querySelector(".payment-mid-name")?.value?.trim() || `${index + 1}차 중도금`,
+      input: row.querySelector(".payment-mid-rate"),
+      field: row.querySelector(".payment-mid-rate")?.closest(".rate-slider-field"),
+    })),
+    {
+      label: "잔금",
+      input: card.querySelector(".payment-final-rate"),
+      field: card.querySelector(".payment-final-rate")?.closest(".rate-slider-field"),
+    },
+  ].filter((part) => part.input);
+}
+
+function syncPaymentRateDisplays(card, total = null) {
+  getPaymentRateParts(card).forEach((part) => {
+    const input = part.input;
+    const rate = clampPercent(readNumber(input));
+    const value = rate.toFixed(1).replace(/\.0$/, "");
+    const display = part.field?.querySelector("[data-payment-rate-display]");
+    if (display) display.textContent = `${value}%`;
+    const amountDisplay = part.field?.querySelector("[data-payment-amount-display]");
+    if (amountDisplay) {
+      amountDisplay.textContent = Number.isFinite(total)
+        ? `총 제안금액 기준 ${formatWon(total * (rate / 100))}`
+        : "총 제안금액 기준 -";
+    }
+  });
+  renderPaymentAllocation(card);
+}
+
+function renderPaymentAllocationLegacy(card) {
+  const bar = card.querySelector(".payment-allocation-bar");
+  if (!bar) return;
+  const parts = getPaymentRateParts(card);
+  const total = parts.reduce((sum, part) => sum + clampPercent(readNumber(part.input)), 0) || 100;
+  let cumulative = 0;
+  const colors = ["#1f6f54", "#4f86a8", "#8a6f2a", "#6f8f45", "#7d6a9a", "#9a6748", "#48556a", "#2f7c83"];
+  const segments = parts
+    .map((part, index) => {
+      const rate = clampPercent(readNumber(part.input));
+      const share = total > 0 ? (rate / total) * 100 : 0;
+      return `
+        <div class="payment-allocation-segment" style="flex-basis:${share}%; background:${colors[index % colors.length]}">
+          <span>${escapeHtml(part.label)} ${rate.toFixed(1).replace(/\.0$/, "")}%</span>
+        </div>
+      `;
+    })
+    .join("");
+  const handles = parts
+    .slice(0, -1)
+    .map((part, index) => {
+      cumulative += clampPercent(readNumber(part.input));
+      return `<input class="payment-boundary-slider" type="range" min="0" max="100" step="1" value="${Math.round(cumulative)}" data-boundary-index="${index}" aria-label="${escapeHtml(part.label)} 경계 조정" />`;
+    })
+    .join("");
+  bar.innerHTML = `<div class="payment-allocation-track">${segments}</div>${handles}`;
+}
+
+function applyPaymentBoundary(card, boundaryIndex, boundaryValue) {
+  const parts = getPaymentRateParts(card);
+  if (boundaryIndex < 0 || boundaryIndex >= parts.length - 1) return;
+  const rates = parts.map((part) => clampPercent(readNumber(part.input)));
+  const lower = rates.slice(0, boundaryIndex).reduce((sum, rate) => sum + rate, 0);
+  const upper = rates.slice(0, boundaryIndex + 2).reduce((sum, rate) => sum + rate, 0);
+  const nextBoundary = Math.min(upper, Math.max(lower, clampPercent(boundaryValue)));
+  rates[boundaryIndex] = Math.max(0, nextBoundary - lower);
+  rates[boundaryIndex + 1] = Math.max(0, upper - nextBoundary);
+  parts.forEach((part, index) => {
+    part.input.value = Math.round(rates[index]);
+  });
+}
+
+function renderPaymentAllocation(card) {
+  const bar = card.querySelector(".payment-allocation-bar");
+  if (!bar) return;
+  const parts = getPaymentRateParts(card);
+  const total = parts.reduce((sum, part) => sum + clampPercent(readNumber(part.input)), 0) || 100;
+  let cumulative = 0;
+  const colors = ["#1f6f54", "#4f86a8", "#8a6f2a", "#6f8f45", "#7d6a9a", "#9a6748", "#48556a", "#2f7c83"];
+  const segments = parts
+    .map((part, index) => {
+      const rate = clampPercent(readNumber(part.input));
+      const share = total > 0 ? (rate / total) * 100 : 0;
+      return `
+        <div class="payment-allocation-segment" style="flex-basis:${share}%; background:${colors[index % colors.length]}">
+          <span>${escapeHtml(part.label)} ${rate.toFixed(1).replace(/\.0$/, "")}%</span>
+        </div>
+      `;
+    })
+    .join("");
+  const handles = parts
+    .slice(0, -1)
+    .map((part, index) => {
+      cumulative += clampPercent(readNumber(part.input));
+      const boundaryValue = Math.round(cumulative);
+      return `
+        <input class="payment-boundary-slider" type="range" min="0" max="100" step="1" value="${boundaryValue}" data-boundary-index="${index}" aria-label="${escapeHtml(part.label)} boundary adjustment" />
+        <span class="payment-boundary-handle" style="left:${boundaryValue}%" aria-hidden="true"></span>
+      `;
+    })
+    .join("");
+  bar.innerHTML = `<div class="payment-allocation-track">${segments}</div>${handles}`;
+}
+
+function getPaymentBoundaryValueFromPointer(bar, clientX) {
+  const rect = bar.getBoundingClientRect();
+  if (!rect.width) return 0;
+  return clampPercent(((clientX - rect.left) / rect.width) * 100);
+}
+
+function getClosestPaymentBoundaryIndex(card, value) {
+  const parts = getPaymentRateParts(card);
+  if (parts.length < 2) return null;
+  let cumulative = 0;
+  let closest = { index: 0, distance: Infinity };
+  parts.slice(0, -1).forEach((part, index) => {
+    cumulative += clampPercent(readNumber(part.input));
+    const distance = Math.abs(cumulative - value);
+    if (distance < closest.distance) closest = { index, distance };
+  });
+  return closest.index;
+}
+
+function updatePaymentBoundaryFromPointer(card, boundaryIndex, boundaryValue) {
+  if (boundaryIndex === null) return;
+  applyPaymentBoundary(card, boundaryIndex, boundaryValue);
+  updateCard(card);
+  refreshDocumentOutput(card);
+}
+
+function renderPaymentMidRows(card, resetRates = false, targetCount = null) {
   const list = card.querySelector(".payment-mid-list");
   if (!list) return;
-  const countInput = card.querySelector(".payment-mid-count");
-  const count = Math.min(12, Math.max(0, Math.round(readNumber(countInput))));
-  countInput.value = count;
   const existing = [...list.querySelectorAll(".payment-mid-row")].map((row) => ({
     name: row.querySelector(".payment-mid-name")?.value || "",
     rate: readNumber(row.querySelector(".payment-mid-rate")),
     condition: row.querySelector(".payment-mid-condition")?.value || "",
   }));
+  const initialCount = list.dataset.initialized === "true" ? existing.length : 1;
+  const count = Math.min(12, Math.max(0, Math.round(targetCount ?? initialCount)));
+  list.dataset.initialized = "true";
   const contractRate = clampPercent(readNumber(card.querySelector(".payment-contract-rate")));
   const finalRateInput = card.querySelector(".payment-final-rate");
   if (count === 0 && resetRates && finalRateInput) finalRateInput.value = Math.max(0, 100 - contractRate);
@@ -694,6 +882,12 @@ function renderPaymentMidRows(card, resetRates = false) {
   let assigned = 0;
 
   list.innerHTML = "";
+  if (count === 0) {
+    list.innerHTML = `<p class="payment-mid-empty">중도금 없이 계약금과 잔금만으로 설정합니다.</p>`;
+    syncPaymentRateDisplays(card);
+    return;
+  }
+
   Array.from({ length: count }, (_, index) => {
     const saved = existing[index] || {};
     const rate =
@@ -703,23 +897,31 @@ function renderPaymentMidRows(card, resetRates = false) {
           : baseRate
         : saved.rate;
     assigned += rate;
-    const row = document.createElement("label");
+    const row = document.createElement("article");
     row.className = "payment-mid-row";
     row.innerHTML = `
-      <span>${index + 1}차 중도금</span>
+      <div class="payment-mid-row__head">
+        <span>${index + 1}차 중도금</span>
+        <button class="payment-mid-remove" type="button" aria-label="${index + 1}차 중도금 삭제">×</button>
+      </div>
       <input class="payment-mid-name" type="text" value="${escapeHtml(saved.name || `${index + 1}차 중도금`)}" />
-      <div class="percent-input">
-        <input class="payment-mid-rate" type="number" min="0" max="100" step="1" value="${rate}" />
-        <em>%</em>
+      <div class="rate-slider-field">
+        <div class="rate-slider-field__value">
+          <strong data-payment-rate-display>${rate}%</strong>
+          <small data-payment-amount-display>총 제안금액 기준 -</small>
+        </div>
+        <input class="payment-mid-rate payment-rate-value" type="hidden" value="${rate}" />
       </div>
       <input class="payment-mid-condition" type="text" value="${escapeHtml(saved.condition || "주요 마일스톤 완료 시")}" />
     `;
     list.append(row);
   });
+  syncPaymentRateDisplays(card);
 }
 
 function syncPaymentUi(card, result = null) {
   const method = getPaymentMethod(card);
+  syncPaymentRateDisplays(card, result ? getContractTotal(result) : null);
   card.querySelectorAll(".payment-method-card").forEach((label) => {
     const input = label.querySelector(".payment-method");
     label.classList.toggle("is-selected", input.checked);
@@ -750,7 +952,7 @@ function renderDocumentTable(rows) {
             ([label, value]) => `
               <tr>
                 <th>${escapeHtml(label)}</th>
-                <td>${escapeHtml(value)}</td>
+                <td>${renderDocumentValue(value)}</td>
               </tr>
             `,
           )
@@ -760,9 +962,153 @@ function renderDocumentTable(rows) {
   `;
 }
 
+function renderDocumentValue(value) {
+  if (value && typeof value === "object" && "html" in value) return value.html;
+  return escapeHtml(value);
+}
+
 function renderDocumentBullets(items, fallback = "해당 없음") {
   const list = items.length ? items : [fallback];
   return `<ul class="legal-list">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function renderCompactBullets(items, fallback = "해당 없음") {
+  const list = items.length ? items : [fallback];
+  return `<ul class="legal-list legal-list--compact">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function renderLegalChips(items, fallback = "해당 없음") {
+  const list = items.length ? items : [fallback];
+  return `<div class="legal-chip-list">${list.map((item) => `<span class="legal-chip">${escapeHtml(item)}</span>`).join("")}</div>`;
+}
+
+function compactText(value, maxLength = 96) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  const sentenceEnd = text.slice(0, maxLength).lastIndexOf(".");
+  const cut = sentenceEnd > 42 ? sentenceEnd + 1 : maxLength;
+  return `${text.slice(0, cut).trim()}...`;
+}
+
+function renderTwoLineCell(primary, secondary = "") {
+  const note = compactText(secondary, 120);
+  return `
+    <div class="legal-cell-main">${escapeHtml(compactText(primary, 120))}</div>
+    ${note ? `<div class="legal-cell-note">${escapeHtml(note)}</div>` : ""}
+  `;
+}
+
+function getTaskPhaseSummary(packageKey) {
+  const tasks = getVisibleTasks(packageKey);
+  const phases = [...new Set(tasks.map((task) => task.phase))];
+  return phases.map((phase) => {
+    const phaseTasks = tasks.filter((task) => task.phase === phase);
+    const sample = phaseTasks.slice(0, 3).map((task) => task.title).join(", ");
+    const suffix = phaseTasks.length > 3 ? ` 외 ${phaseTasks.length - 3}건` : "";
+    return `${phase}: ${sample}${suffix}`;
+  });
+}
+
+function renderScopeOptionTable(rows, { showAmount = false, empty = "해당 업무가 없습니다." } = {}) {
+  const colSpan = showAmount ? 4 : 3;
+  return `
+    <div class="legal-table-scroll">
+      <table class="legal-table legal-table--wide legal-table--scope-options${showAmount ? " legal-table--scope-options-priced" : ""}">
+        <thead>
+          <tr>
+            <th>업무명</th>
+            ${showAmount ? "<th>금액</th>" : ""}
+            <th>범위</th>
+            <th>제외사항/근거</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            rows.length
+              ? rows
+                  .map(
+                    (row) => `
+                      <tr>
+                        <td>${escapeHtml(row.label)}</td>
+                        ${showAmount ? `<td>${escapeHtml(row.amount)}</td>` : ""}
+                        <td>${renderTwoLineCell(row.scope)}</td>
+                        <td>${renderTwoLineCell(row.note)}</td>
+                      </tr>
+                    `,
+                  )
+                  .join("")
+              : `<tr><td colspan="${colSpan}">${escapeHtml(empty)}</td></tr>`
+          }
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderEstimateIncludedTable(rows) {
+  return `
+    <div class="legal-table-scroll">
+      <table class="legal-table legal-table--wide legal-table--estimate-included">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th>업무 범위</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            rows.length
+              ? rows
+                  .map(
+                    (row) => `
+                      <tr>
+                        <td>${escapeHtml(row.label)}</td>
+                        <td>${renderTwoLineCell(row.note, row.detail)}</td>
+                      </tr>
+                    `,
+                  )
+                  .join("")
+              : `<tr><td colspan="2">패키지에 포함된 옵션 업무가 없습니다.</td></tr>`
+          }
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderEstimateChargeTable(rows) {
+  return `
+    <div class="legal-table-scroll">
+      <table class="legal-table legal-table--wide legal-table--estimate-charge">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th>산정 기준</th>
+            <th>금액</th>
+            <th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            rows.length
+              ? rows
+                  .map(
+                    (row) => `
+                      <tr>
+                        <td>${escapeHtml(row.label)}</td>
+                        <td>${escapeHtml(row.basis)}</td>
+                        <td>${escapeHtml(row.amount)}</td>
+                        <td>${renderTwoLineCell(row.note, row.detail)}</td>
+                      </tr>
+                    `,
+                  )
+                  .join("")
+              : `<tr><td colspan="4">추가 선택 또는 가산 항목이 없습니다.</td></tr>`
+          }
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function renderPlainDocumentHtml(title, text) {
@@ -773,9 +1119,46 @@ function renderPlainDocumentHtml(title, text) {
         <h2>${escapeHtml(title)}</h2>
         <span>작성일 ${formatDocumentDate()}</span>
       </header>
-      <pre class="legal-pre">${escapeHtml(text)}</pre>
+      <div class="legal-plain-body">${renderPlainTextBlocks(text)}</div>
     </article>
   `;
+}
+
+function renderPlainTextBlocks(text) {
+  const blocks = String(text || "")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return blocks
+    .map((block, index) => {
+      const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+      if (!lines.length) return "";
+      const heading = lines[0];
+      const content = lines.slice(1);
+      const isDocumentTitle = index === 0 && content.length === 0;
+      const isSectionHeading = /^\d+\.\s/.test(heading);
+
+      if (isDocumentTitle) return `<h3 class="legal-plain-title">${escapeHtml(heading)}</h3>`;
+
+      const renderedContent = content.length
+        ? renderPlainTextLines(content)
+        : renderPlainTextLines(lines);
+
+      return `
+        <section class="legal-plain-section">
+          ${isSectionHeading ? `<h3>${escapeHtml(heading)}</h3>` : ""}
+          ${isSectionHeading ? renderedContent : renderPlainTextLines(lines)}
+        </section>
+      `;
+    })
+    .join("");
+}
+
+function renderPlainTextLines(lines) {
+  const listItems = lines.filter((line) => line.startsWith("- ")).map((line) => line.replace(/^- /, ""));
+  if (listItems.length === lines.length) return renderCompactBullets(listItems);
+  return lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("");
 }
 
 function parseAmount(value) {
@@ -857,10 +1240,15 @@ function getPackageOptionRule(packageKey) {
 }
 
 function readDiagnosis(card) {
-  return [...card.querySelectorAll(".diagnosis-choice.is-selected")].reduce((values, input) => {
-    values[input.dataset.diagnosis] = input.dataset.value;
-    return values;
+  const values = [...card.querySelectorAll(".diagnosis-choice.is-selected")].reduce((current, input) => {
+    current[input.dataset.diagnosis] = input.dataset.value;
+    if (input.dataset.financeValue) current.finance = input.dataset.financeValue;
+    if (input.dataset.purposeValue) current.purpose = input.dataset.purposeValue;
+    return current;
   }, {});
+  if (!values.finance) values.finance = "no";
+  if (!values.purpose) values.purpose = "own";
+  return values;
 }
 
 function recommendPackage(card) {
@@ -995,7 +1383,9 @@ function calculateProject(card) {
 
 function updateCard(card) {
   const result = calculateProject(card);
-  const displayTotal = elements.includeVat.checked ? result.subtotal * (1 + VAT_RATE) : result.subtotal;
+  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
+  const displayTotal = result.subtotal + vat;
+  const convertedRate = result.managedCost > 0 ? displayTotal / result.managedCost : 0;
   const selectedPackage = packages[card.querySelector(".package-select").value];
   const intensity = selectedPackage.intensity;
 
@@ -1005,19 +1395,23 @@ function updateCard(card) {
   renderBaseFeeBreakdown(card, result);
   card.querySelector(".linked-fee").textContent = formatWon(result.linkedFee);
   card.querySelector(".option-fee").textContent = formatWon(result.optionFee);
+  card.querySelector(".subtotal-fee").textContent = formatWon(result.subtotal);
+  card.querySelector(".vat-fee").textContent = formatWon(vat);
+  card.querySelector(".converted-rate").textContent = result.managedCost > 0 ? formatPercent(convertedRate) : "-";
   card.querySelector(".project-total").textContent = formatWon(displayTotal);
   card.querySelector(".calculation-note").textContent =
     result.bracket.totalRange[0] === 0
       ? `${intensityDescriptions[intensity]} · ${result.bracket.label} 구간은 투입인력 기준 별도 산정을 권장합니다. 현재 연동 요율은 ${formatPercent(result.linkedRate)}입니다.`
       : `${intensityDescriptions[intensity]} · ${result.bracket.label} 구간 권장 총액은 ${result.bracket.totalRange[0].toLocaleString("ko-KR")}만~${result.bracket.totalRange[1].toLocaleString("ko-KR")}만원입니다. 현재 연동 요율은 ${formatPercent(result.linkedRate)}입니다.`;
 
-  updateSummary(result);
+  updateSummary(result, card);
 }
 
-function updateSummary(result) {
+function updateSummary(result, card) {
   const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
   const grandTotal = result.subtotal + vat;
   const grandRate = result.managedCost > 0 ? grandTotal / result.managedCost : 0;
+  const paymentMethod = getPaymentMethod(card) === "monthly" ? "B안 월정액" : "A안 단계별";
 
   elements.stickyBaseAmount.textContent = formatWon(result.baseFee);
   elements.stickyLinkedAmount.textContent = formatWon(result.linkedFee);
@@ -1025,6 +1419,11 @@ function updateSummary(result) {
   elements.stickyOptionAmount.textContent = formatWon(result.optionFee);
   elements.stickyGrandAmount.textContent = formatWon(grandTotal);
   elements.stickyGrandRate.textContent = result.managedCost > 0 ? `사업비 대비 ${formatPercent(grandRate)}` : "사업비 대비 -";
+  elements.stickyPackageName.textContent = `패키지: ${result.selectedPackage.label}`;
+  elements.stickyDuration.textContent = `기간: ${result.months}개월`;
+  elements.stickyManagedCost.textContent = `관리대상 사업비: ${formatWon(result.managedCost)}`;
+  elements.stickyPaymentMethod.textContent = `결제: ${paymentMethod}`;
+  elements.stickyVatState.textContent = elements.includeVat.checked ? "VAT 포함" : "VAT 별도";
 }
 
 function getVisibleTasks(packageKey) {
@@ -1194,22 +1593,17 @@ function buildScopeAttachmentHtml(card, result) {
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
   const visibleTasks = getVisibleTasks(result.packageKey);
   const phases = [...new Set(visibleTasks.map((task) => task.phase))];
-  const optionRows = [
-    ...result.includedOptionItems.map((option) => ({
-      label: option.label,
-      status: "패키지 포함",
-      amount: "포함",
-      scope: option.description,
-      note: option.caution || option.basis || "-",
-    })),
-    ...result.selectedPaidOptions.map((option) => ({
-      label: option.label,
-      status: "추가 선택",
-      amount: `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`,
-      scope: option.description,
-      note: option.caution || option.basis || "-",
-    })),
-  ];
+  const includedScopeRows = result.includedOptionItems.map((option) => ({
+    label: option.label,
+    scope: option.description,
+    note: option.caution || option.basis || "-",
+  }));
+  const paidScopeRows = result.selectedPaidOptions.map((option) => ({
+    label: option.label,
+    amount: `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`,
+    scope: option.description,
+    note: option.caution || option.basis || "-",
+  }));
 
   return `
     <article class="legal-page">
@@ -1235,20 +1629,19 @@ function buildScopeAttachmentHtml(card, result) {
           ["기본 PM비", formatWon(result.baseFee)],
           ["사업비 연동 보수", `${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})`],
           ["옵션·가산 금액", formatWon(result.optionFee)],
-          ["포함 사업비", includedCostLines.length ? includedCostLines.join(", ") : "미입력"],
-          ["제외 또는 별도 참고", excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"],
+          ["포함 사업비", { html: renderLegalChips(includedCostLines, "미입력") }],
+          ["제외 또는 별도 참고", { html: renderLegalChips(excludedCostLines) }],
         ])}
       </section>
 
       <section class="legal-section">
         <h3>2. 기본 PM 업무 범위</h3>
         <div class="legal-table-scroll">
-          <table class="legal-table legal-table--wide">
+          <table class="legal-table legal-table--wide legal-table--task-scope">
             <thead>
               <tr>
                 <th>단계</th>
                 <th>주요 업무</th>
-                <th>포함 여부</th>
                 <th>산출물</th>
                 <th>비고</th>
               </tr>
@@ -1260,8 +1653,7 @@ function buildScopeAttachmentHtml(card, result) {
                   return `
                     <tr>
                       <th>${escapeHtml(phase)}</th>
-                      <td>${renderDocumentBullets(tasks.map((task) => `${task.no}. ${task.title}`))}</td>
-                      <td>기본 포함</td>
+                      <td>${renderCompactBullets(tasks.map((task) => `${task.no}. ${task.title}`))}</td>
                       <td>회의록, 검토 메모, 관리표, 보고자료</td>
                       <td>${escapeHtml(getPhaseFeeWeight(phase).note)}</td>
                     </tr>
@@ -1274,43 +1666,17 @@ function buildScopeAttachmentHtml(card, result) {
       </section>
 
       <section class="legal-section">
-        <h3>3. 패키지 포함 및 추가 선택 업무</h3>
-        <div class="legal-table-scroll">
-          <table class="legal-table legal-table--wide">
-            <thead>
-              <tr>
-                <th>업무명</th>
-                <th>상태</th>
-                <th>금액</th>
-                <th>범위</th>
-                <th>제외사항/근거</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                optionRows.length
-                  ? optionRows
-                      .map(
-                        (option) => `
-                          <tr>
-                            <td>${escapeHtml(option.label)}</td>
-                            <td><span class="legal-badge">${escapeHtml(option.status)}</span></td>
-                            <td>${escapeHtml(option.amount)}</td>
-                            <td>${escapeHtml(option.scope)}</td>
-                            <td>${escapeHtml(option.note)}</td>
-                          </tr>
-                        `,
-                      )
-                      .join("")
-                  : `<tr><td colspan="5">선택 또는 포함된 옵션 업무가 없습니다.</td></tr>`
-              }
-            </tbody>
-          </table>
-        </div>
+        <h3>3. 패키지 포함 업무</h3>
+        ${renderScopeOptionTable(includedScopeRows, { empty: "패키지에 포함된 옵션 업무가 없습니다." })}
       </section>
 
       <section class="legal-section">
-        <h3>4. 책임 구분표 (RACI 요약)</h3>
+        <h3>4. 추가 선택 업무</h3>
+        ${renderScopeOptionTable(paidScopeRows, { showAmount: true, empty: "추가 선택 업무가 없습니다." })}
+      </section>
+
+      <section class="legal-section">
+        <h3>5. 책임 구분표 (RACI 요약)</h3>
         <div class="legal-table-scroll">
           <table class="legal-table legal-table--wide">
             <thead>
@@ -1340,7 +1706,7 @@ function buildScopeAttachmentHtml(card, result) {
       </section>
 
       <section class="legal-section legal-note-box">
-        <h3>5. 변경·추가업무 및 지급 기준</h3>
+        <h3>6. 변경·추가업무 및 지급 기준</h3>
         ${renderDocumentBullets([
           "프로젝트 규모, 용도, 연면적, 예산, 일정, 설계범위가 변경되는 경우 업무범위와 용역비를 재협의합니다.",
           "회의, 현장방문, 보고서, 견적비교, 계약검토, 대외협의 횟수가 현저히 증가하는 경우 추가 업무로 봅니다.",
@@ -1350,7 +1716,7 @@ function buildScopeAttachmentHtml(card, result) {
         ])}
       </section>
       <section class="legal-section">
-        <h3>6. 비용 결제 조건</h3>
+        <h3>7. 비용 결제 조건</h3>
         ${renderPaymentTableHtml(card, result)}
       </section>
     </article>
@@ -1435,28 +1801,28 @@ function buildEstimateDraftHtml(card, result) {
   const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
   const includedOptionRows = result.includedOptionItems.map((option) => ({
     label: option.label,
-    status: "패키지 포함",
-    unit: "포함",
-    quantity: "-",
-    amount: "포함",
     note: option.description,
+    detail: option.caution || option.basis || "",
   }));
   const paidOptionRows = result.selectedPaidOptions.map((option) => {
     const quantity = option.monthly ? `${result.months}개월` : "1식";
     const amount = option.amount * (option.monthly ? result.months : 1);
     return {
       label: option.label,
-      status: "추가 선택",
-      unit: `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`,
-      quantity,
+      basis: `${option.monthly ? "월 " : ""}${formatWon(option.amount)} × ${quantity}`,
       amount: formatWon(amount),
       note: option.description,
+      detail: option.caution || option.basis || "",
     };
   });
   const adjustmentRows = [
-    ["성과보수", formatWon(result.successFee)],
-    ["실비", formatWon(result.expenseFee)],
-    ["직접 조정", formatWon(result.manualAdjustment)],
+    { label: "성과보수", amount: formatWon(result.successFee), basis: "성과 조건 별도 합의", note: "성과보수 입력값" },
+    { label: "실비", amount: formatWon(result.expenseFee), basis: "사전 승인 실비", note: "실비 입력값" },
+    { label: "직접 조정", amount: formatWon(result.manualAdjustment), basis: "사용자 직접 조정", note: "직접 조정 입력값" },
+  ];
+  const chargeRows = [
+    ...paidOptionRows,
+    ...adjustmentRows.filter((row) => row.amount !== "0원"),
   ];
 
   return `
@@ -1490,8 +1856,8 @@ function buildEstimateDraftHtml(card, result) {
       <section class="legal-section">
         <h3>2. 관리대상 사업비 산정 기준</h3>
         ${renderDocumentTable([
-          ["포함 사업비", includedCostLines.length ? includedCostLines.join(", ") : "미입력"],
-          ["제외 또는 별도 참고 사업비", excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"],
+          ["포함 사업비", { html: renderLegalChips(includedCostLines, "미입력") }],
+          ["제외 또는 별도 참고 사업비", { html: renderLegalChips(excludedCostLines) }],
           ["산정 원칙", "토지비, 취득세, 금융비, 매각가는 기본 PM 요율 산정에서 제외하고 설계·인허가·철거·시공·인테리어·부담금·예비비 중심으로 산정"],
         ])}
       </section>
@@ -1499,7 +1865,7 @@ function buildEstimateDraftHtml(card, result) {
       <section class="legal-section">
         <h3>3. 기본 PM비 단계별 상세</h3>
         <div class="legal-table-scroll">
-          <table class="legal-table legal-table--wide">
+          <table class="legal-table legal-table--wide legal-table--base-breakdown">
             <thead>
               <tr>
                 <th>단계</th>
@@ -1515,7 +1881,7 @@ function buildEstimateDraftHtml(card, result) {
                   (row) => `
                     <tr>
                       <td>${escapeHtml(row.phase)}</td>
-                      <td>${escapeHtml(row.note)}</td>
+                      <td>${renderTwoLineCell(row.note)}</td>
                       <td>${row.taskCount}개</td>
                       <td>${formatPercent(row.share)}</td>
                       <td><strong>${formatWon(row.amount)}</strong></td>
@@ -1533,60 +1899,17 @@ function buildEstimateDraftHtml(card, result) {
       </section>
 
       <section class="legal-section">
-        <h3>4. 옵션 및 가산 내역</h3>
-        <div class="legal-table-scroll">
-          <table class="legal-table legal-table--wide">
-            <thead>
-              <tr>
-                <th>항목</th>
-                <th>상태</th>
-                <th>단가</th>
-                <th>수량/기간</th>
-                <th>금액</th>
-                <th>비고</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                [...includedOptionRows, ...paidOptionRows].length
-                  ? [...includedOptionRows, ...paidOptionRows]
-                      .map(
-                        (row) => `
-                          <tr>
-                            <td>${escapeHtml(row.label)}</td>
-                            <td><span class="legal-badge">${escapeHtml(row.status)}</span></td>
-                            <td>${escapeHtml(row.unit)}</td>
-                            <td>${escapeHtml(row.quantity)}</td>
-                            <td>${escapeHtml(row.amount)}</td>
-                            <td>${escapeHtml(row.note)}</td>
-                          </tr>
-                        `,
-                      )
-                      .join("")
-                  : `<tr><td colspan="6">선택 또는 포함된 옵션 업무가 없습니다.</td></tr>`
-              }
-              ${adjustmentRows
-                .filter(([, amount]) => amount !== "0원")
-                .map(
-                  ([label, amount]) => `
-                    <tr>
-                      <td>${escapeHtml(label)}</td>
-                      <td><span class="legal-badge">가산/조정</span></td>
-                      <td>-</td>
-                      <td>1식</td>
-                      <td>${escapeHtml(amount)}</td>
-                      <td>사용자 입력 조정값</td>
-                    </tr>
-                  `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </div>
+        <h3>4. 패키지 포함 업무</h3>
+        ${renderEstimateIncludedTable(includedOptionRows)}
       </section>
 
       <section class="legal-section">
-        <h3>5. 최종 견적금액</h3>
+        <h3>5. 추가 선택·가산 내역</h3>
+        ${renderEstimateChargeTable(chargeRows)}
+      </section>
+
+      <section class="legal-section">
+        <h3>6. 최종 견적금액</h3>
         <div class="estimate-total-grid">
           <div><span>기본 PM비</span><strong>${formatWon(result.baseFee)}</strong></div>
           <div><span>사업비 연동 보수</span><strong>${formatWon(result.linkedFee)}</strong></div>
@@ -1598,12 +1921,12 @@ function buildEstimateDraftHtml(card, result) {
       </section>
 
       <section class="legal-section legal-note-box">
-        <h3>6. 비용 결제 조건</h3>
+        <h3>7. 비용 결제 조건</h3>
         ${renderPaymentTableHtml(card, result)}
       </section>
 
       <section class="legal-section legal-note-box">
-        <h3>7. 견적 조건</h3>
+        <h3>8. 견적 조건</h3>
         ${renderDocumentBullets([
           "본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.",
           "관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.",
@@ -1795,12 +2118,12 @@ ${toContractList(paidOptions)}
 
 function buildContractDraftHtml(card, result) {
   const projectName = card.querySelector(".project-name").value || "프로젝트";
-  const includedOptions = result.includedOptionItems.map((option) => `${option.label}: ${option.description}`);
+  const includedOptions = result.includedOptionItems.map((option) => `${option.label}: ${compactText(option.description, 90)}`);
   const paidOptions = result.selectedPaidOptions.map((option) => {
     const feeText = `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`;
-    return `${option.label}: ${option.description} (${feeText})`;
+    return `${option.label}: ${compactText(option.description, 90)} (${feeText})`;
   });
-  const taskItems = getVisibleTaskTitles(result.packageKey);
+  const taskItems = getTaskPhaseSummary(result.packageKey);
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
   const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
@@ -1811,7 +2134,7 @@ function buildContractDraftHtml(card, result) {
     ["제2조 [계약문서의 구성 및 우선순위]", ["계약문서는 본 계약서, 별첨 1 업무범위표, 별첨 2 산출내역서, 별첨 3 선택 옵션 내역, 회의록 또는 변경합의서로 구성한다.", "계약문서 간 내용이 충돌하는 경우 변경합의서, 계약서, 별첨 업무범위표, 산출내역서 순으로 우선 적용한다.", "구두 지시, 문자, 이메일, 메신저 등은 계약금액 또는 업무범위를 변경하는 효력을 갖지 않으며, 변경은 서면 또는 전자문서 합의로 한다."]],
     ["제3조 [용어의 정의]", ["PM 용역은 갑의 의사결정을 지원하고 프로젝트의 일정, 비용, 품질, 리스크, 커뮤니케이션을 관리하는 업무를 말한다.", "기본 업무는 선택 패키지와 별첨 업무범위표에 포함된 업무를 말한다.", "추가 업무는 본 계약 체결 후 갑의 요청 또는 프로젝트 사정 변경으로 새로 발생하거나 선택한 옵션 업무를 말한다.", "관리대상 사업비는 PM비 산정 기준이 되는 설계비, 감리비, 인허가비, 철거비, 시공비, 인테리어 공사비, 각종 부담금, 예비비 등 건축 관련 비용을 말한다."]],
     ["제4조 [프로젝트 개요 및 용역 수행 방식]", [`선택 패키지: ${result.selectedPackage.label} (${result.selectedPackage.description})`, `참여 방식: ${result.selectedPackage.engagement}`, `주요 범위: ${result.selectedPackage.scope}`, `제외 또는 제한 범위: ${result.selectedPackage.excludes}`]],
-    ["제5조 [기본 업무 범위]", taskItems],
+    ["제5조 [기본 업무 범위]", [...taskItems, "세부 업무명과 산출물은 별첨 1 PM 업무범위표에 따른다."]],
     ["제6조 [패키지 포함 업무]", includedOptions.length ? includedOptions : ["해당 없음"]],
     ["제7조 [추가 선택 업무]", paidOptions.length ? paidOptions : ["해당 없음"]],
     ["제8조 [업무 결과물 및 보고]", ["을은 업무 수행 과정에서 필요한 경우 회의록, 이슈리스트, 일정표, 견적 비교표, 변경관리표, 기성검토 의견, 준공점검표, 정산검토 의견 등 업무 성격에 맞는 결과물을 제공한다.", "결과물의 형식은 문서, 표, 이메일, 회의록, 온라인 공유문서 등 프로젝트 운영에 적합한 방식으로 한다.", "을의 검토 의견은 갑의 의사결정을 돕기 위한 관리 의견이며, 법정 설계·감리·시공·전문기술 검토를 대체하지 않는다."]],
@@ -1847,8 +2170,8 @@ function buildContractDraftHtml(card, result) {
           ["발주자(갑)", "[상호/성명, 주소, 연락처 기재]"],
           ["PM 수행자(을)", "빅플래너 파트너스 / [사업자 정보 기재]"],
           ["관리대상 사업비", formatWon(result.managedCost)],
-          ["관리대상 사업비 세부", includedCostLines.length ? includedCostLines.join(", ") : "미입력"],
-          ["제외 또는 별도 참고 사업비", excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"],
+          ["관리대상 사업비 세부", { html: renderLegalChips(includedCostLines, "미입력") }],
+          ["제외 또는 별도 참고 사업비", { html: renderLegalChips(excludedCostLines) }],
           ["선택 패키지", result.selectedPackage.label],
           ["예정 용역기간", `계약 체결일로부터 ${result.months}개월`],
           ["계약금액", `공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}`],
@@ -1870,7 +2193,7 @@ function buildContractDraftHtml(card, result) {
             ([title, items]) => `
               <section class="legal-article">
                 <h4>${escapeHtml(title)}</h4>
-                ${renderDocumentBullets(items)}
+                ${renderCompactBullets(items)}
               </section>
             `,
           )
@@ -2002,7 +2325,15 @@ function updateDiagnosis(card) {
   card.querySelector(".diagnosis-reason").textContent =
     recommendation.reasons.length > 0
       ? recommendation.reasons.join(" ")
-      : "프로젝트 조건상 기본적인 일반 관리형 검토가 적합합니다.";
+      : `프로젝트 조건상 ${packageName} 중심으로 검토할 수 있습니다.`;
+  const optionHint = card.querySelector(".diagnosis-option-hint");
+  if (optionHint) {
+    optionHint.textContent = recommendation.recommendedOptions.length
+      ? `추천 옵션 ${recommendation.recommendedOptions.length}개가 패키지 선택 영역에 표시됩니다.`
+      : "추가 옵션 없이 기본 패키지 중심으로 검토할 수 있습니다.";
+  }
+  const applyButton = card.querySelector(".apply-diagnosis");
+  if (applyButton) applyButton.textContent = `${packageName}으로 설정`;
 }
 
 function applyDiagnosis(card) {
@@ -2157,6 +2488,29 @@ function setDocumentTab(card, activeTab) {
   card.querySelectorAll("[data-document-panel]").forEach((panel) => {
     panel.hidden = panel.dataset.documentPanel !== activeTab;
   });
+  if (activeTab === "raw") resizeDocumentDraft(card);
+}
+
+function resizeDocumentDraft(card) {
+  const draft = card.querySelector(".document-draft");
+  if (!draft) return;
+  draft.style.height = "auto";
+  draft.style.height = `${Math.max(680, draft.scrollHeight + 2)}px`;
+}
+
+function syncDocumentActionCards(card, type) {
+  const typeClassMap = {
+    proposal: "proposal-generate",
+    estimate: "estimate-generate",
+    scope: "scope-generate",
+    contract: "contract-generate",
+  };
+  const activeClass = typeClassMap[type];
+  card.querySelectorAll(".document-action-card").forEach((button) => {
+    const isActive = Boolean(activeClass && button.classList.contains(activeClass));
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
 }
 
 function setDocumentOutput(card, { type, text, html, title }) {
@@ -2164,6 +2518,8 @@ function setDocumentOutput(card, { type, text, html, title }) {
   card.dataset.documentTitle = title;
   card.querySelector(".document-draft").value = text;
   card.querySelector(".document-preview").innerHTML = html || renderPlainDocumentHtml(title, text);
+  resizeDocumentDraft(card);
+  syncDocumentActionCards(card, type);
   setDocumentTab(card, "preview");
 }
 
@@ -2274,14 +2630,67 @@ function createProject(initialPackage = "standard") {
   });
 
   paymentBlock.addEventListener("input", (event) => {
-    if (event.target.classList.contains("payment-mid-count")) renderPaymentMidRows(card, true);
+    if (event.target.classList.contains("payment-boundary-slider")) {
+      applyPaymentBoundary(card, Number(event.target.dataset.boundaryIndex), readNumber(event.target));
+    }
     updateCard(card);
     refreshDocumentOutput(card);
   });
 
   paymentBlock.addEventListener("change", (event) => {
     if (event.target.classList.contains("payment-method")) syncPaymentUi(card);
-    if (event.target.classList.contains("payment-mid-count")) renderPaymentMidRows(card, true);
+    if (event.target.classList.contains("payment-boundary-slider")) {
+      applyPaymentBoundary(card, Number(event.target.dataset.boundaryIndex), readNumber(event.target));
+    }
+    updateCard(card);
+    refreshDocumentOutput(card);
+  });
+
+  paymentBlock.addEventListener("pointerdown", (event) => {
+    const bar = event.target.closest(".payment-allocation-bar");
+    if (!bar || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const boundaryValue = getPaymentBoundaryValueFromPointer(bar, event.clientX);
+    const boundaryIndex = getClosestPaymentBoundaryIndex(card, boundaryValue);
+    if (boundaryIndex === null) return;
+    activePaymentBoundary = { card, boundaryIndex, pointerId: event.pointerId };
+    bar.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+    updatePaymentBoundaryFromPointer(card, boundaryIndex, boundaryValue);
+  });
+
+  paymentBlock.addEventListener("pointermove", (event) => {
+    if (!activePaymentBoundary || activePaymentBoundary.card !== card || activePaymentBoundary.pointerId !== event.pointerId) return;
+    const bar = card.querySelector(".payment-allocation-bar");
+    if (!bar) return;
+    event.preventDefault();
+    updatePaymentBoundaryFromPointer(card, activePaymentBoundary.boundaryIndex, getPaymentBoundaryValueFromPointer(bar, event.clientX));
+  });
+
+  paymentBlock.addEventListener("pointerup", (event) => {
+    if (activePaymentBoundary?.pointerId === event.pointerId) activePaymentBoundary = null;
+  });
+
+  paymentBlock.addEventListener("pointercancel", (event) => {
+    if (activePaymentBoundary?.pointerId === event.pointerId) activePaymentBoundary = null;
+  });
+
+  paymentBlock.addEventListener("click", (event) => {
+    const addButton = event.target.closest(".payment-mid-add");
+    const removeButton = event.target.closest(".payment-mid-remove");
+    if (!addButton && !removeButton) return;
+
+    const currentCount = card.querySelectorAll(".payment-mid-row").length;
+    if (addButton) {
+      const finalRateInput = card.querySelector(".payment-final-rate");
+      const contractRate = clampPercent(readNumber(card.querySelector(".payment-contract-rate")));
+      if (currentCount === 0 && finalRateInput && clampPercent(readNumber(finalRateInput)) >= 100 - contractRate) {
+        finalRateInput.value = 10;
+      }
+      renderPaymentMidRows(card, true, currentCount + 1);
+    }
+    if (removeButton) {
+      renderPaymentMidRows(card, true, Math.max(0, currentCount - 1));
+    }
     updateCard(card);
     refreshDocumentOutput(card);
   });
@@ -2362,10 +2771,37 @@ function resetProject() {
   createProject("standard");
 }
 
+const savedTheme = localStorage.getItem("bigplannerTheme");
+if (savedTheme === "dark" || savedTheme === "light") {
+  setThemeMode(savedTheme);
+} else {
+  syncThemeToggle();
+}
+
+darkModeQuery?.addEventListener("change", () => {
+  if (!localStorage.getItem("bigplannerTheme")) syncThemeToggle();
+});
+
+if (localStorage.getItem("bigplannerLowVision") === "1") {
+  document.body.classList.add("is-low-vision");
+}
+syncLowVisionToggle();
+
+elements.themeToggle?.addEventListener("click", () => {
+  setThemeMode(isDarkModeActive() ? "light" : "dark");
+});
+
+elements.lowVisionToggle?.addEventListener("click", () => {
+  setLowVisionMode(!document.body.classList.contains("is-low-vision"));
+});
+
 elements.resetProject.addEventListener("click", resetProject);
 elements.includeVat.addEventListener("change", () => {
   const card = elements.projectRoot.querySelector(".project-card");
-  if (card) updateCard(card);
+  if (card) {
+    updateCard(card);
+    refreshDocumentOutput(card);
+  }
 });
 
 resetProject();
