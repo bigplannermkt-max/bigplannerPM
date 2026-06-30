@@ -2256,7 +2256,7 @@ function populatePackageCards(grid, select, card) {
 
     button.addEventListener("click", () => {
       select.value = value;
-      applyPackageDefaults(card, value);
+      applyPackageDefaults(card, value, { resetCost: false });
       syncPackageCards(card);
       syncPmTasks(card);
       syncOptionCards(card);
@@ -2342,7 +2342,7 @@ function applyDiagnosis(card) {
   const packageSelect = card.querySelector(".package-select");
 
   packageSelect.value = packageKey;
-  applyPackageDefaults(card, packageKey);
+  applyPackageDefaults(card, packageKey, { resetCost: false });
   syncPackageCards(card);
   syncPmTasks(card);
   syncOptionCards(card);
@@ -2473,10 +2473,11 @@ function populateOptionGrid(grid) {
   });
 }
 
-function applyPackageDefaults(card, packageKey) {
+function applyPackageDefaults(card, packageKey, options = {}) {
+  const { resetCost = true, resetDuration = true } = options;
   const selectedPackage = packages[packageKey];
-  distributeDefaultCost(card, selectedPackage.defaultCost);
-  card.querySelector(".duration-months").value = selectedPackage.defaultMonths;
+  if (resetCost) distributeDefaultCost(card, selectedPackage.defaultCost);
+  if (resetDuration) card.querySelector(".duration-months").value = selectedPackage.defaultMonths;
 }
 
 function setDocumentTab(card, activeTab) {
@@ -2605,7 +2606,7 @@ function createProject(initialPackage = "standard") {
   syncPackageCards(fragment);
 
   packageSelect.addEventListener("change", () => {
-    applyPackageDefaults(card, packageSelect.value);
+    applyPackageDefaults(card, packageSelect.value, { resetCost: false });
     syncPackageCards(card);
     syncPmTasks(card);
     syncOptionCards(card);
