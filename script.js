@@ -1477,7 +1477,7 @@ function getSelectedOptionLabels(result) {
   return [...included, ...selected];
 }
 
-function buildProposalDraft(card, result) {
+function buildProposalDraftLegacy(card, result) {
   const projectName = card.querySelector(".project-name").value || "프로젝트";
   const optionLines = getSelectedOptionLabels(result);
   const diagnosis = card.querySelector(".diagnosis-reason")?.textContent || "";
@@ -1545,6 +1545,268 @@ ${toContractList(optionLines)}
 
 9. 견적 유효조건
 본 견적은 작성일로부터 30일간 유효하며, 관리대상 사업비, 용역기간, 현장방문 빈도, 회의 빈도, 업무범위, 옵션 선택이 변경되는 경우 재산정할 수 있습니다.`;
+}
+
+function getProposalContext(card, result) {
+  const projectName = card.querySelector(".project-name").value || "프로젝트";
+  const diagnosis = card.querySelector(".diagnosis-reason")?.textContent?.trim() || "";
+  const includedCostLines = getCostBreakdownLines(card, "included");
+  const excludedCostLines = getCostBreakdownLines(card, "excluded");
+  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
+  const total = result.subtotal + vat;
+  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
+  const paymentTerms = getPaymentTerms(card, result);
+  const includedOptionLines = result.includedOptionItems.map((option) => `${option.label}: ${option.description}`);
+  const paidOptionLines = result.selectedPaidOptions.map((option) => {
+    const amount = `${option.monthly ? "월 " : ""}${formatWon(option.amount)}`;
+    return `${option.label} (${amount}): ${option.description}`;
+  });
+
+  return {
+    projectName,
+    diagnosis,
+    includedCostLines,
+    excludedCostLines,
+    vat,
+    total,
+    totalRate,
+    paymentTerms,
+    includedOptionLines,
+    paidOptionLines,
+    taskSummary: getTaskPhaseSummary(result.packageKey),
+  };
+}
+
+function getProposalExecutionPlan() {
+  return [
+    {
+      stage: "착수·기획",
+      role: "사업 목표, 예산 기준, 의사결정 체계, 주요 리스크를 정리하고 PM 관리 기준을 세웁니다.",
+      deliverables: "착수회의록, 관리대상 사업비 기준, 마스터 일정, 리스크 목록",
+      communication: "착수회의 및 핵심 의사결정 메모",
+    },
+    {
+      stage: "설계·인허가",
+      role: "설계 방향과 예산 적합성, 인허가 보완사항, 설계변경 영향을 검토합니다.",
+      deliverables: "설계 검토 메모, 인허가 체크리스트, 예산 영향 검토표",
+      communication: "정기회의, 설계 이슈별 검토 의견",
+    },
+    {
+      stage: "견적·계약",
+      role: "견적 요청 기준을 정리하고 공종별 금액, 누락 항목, 지급조건, 계약조건을 비교합니다.",
+      deliverables: "견적 비교표, 계약조건 검토 메모, 시공사 선정 의견",
+      communication: "견적 질의응답 정리 및 발주자 의사결정 지원",
+    },
+    {
+      stage: "공사관리",
+      role: "공정, 기성, 변경, 품질, 민원 이슈를 추적하고 발주자 승인사항을 정리합니다.",
+      deliverables: "공정회의록, 기성 검토 의견, 변경관리표, 주요 이슈 리스트",
+      communication: "정기회의와 현장점검 보고",
+    },
+    {
+      stage: "준공·정산",
+      role: "준공 전 보완사항, 사용승인 일정, 하자·정산 이슈를 확인하고 인수인계를 지원합니다.",
+      deliverables: "준공 체크리스트, 보완사항 목록, 최종 정산 검토표",
+      communication: "준공 전 확인회의 및 최종 보고",
+    },
+  ];
+}
+
+function renderProposalStageTable() {
+  return `
+    <div class="legal-table-scroll">
+      <table class="legal-table legal-table--wide proposal-stage-table">
+        <thead>
+          <tr>
+            <th>단계</th>
+            <th>PM 수행 역할</th>
+            <th>주요 산출물</th>
+            <th>보고·협의 방식</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${getProposalExecutionPlan()
+            .map(
+              (item) => `
+                <tr>
+                  <th>${escapeHtml(item.stage)}</th>
+                  <td>${escapeHtml(item.role)}</td>
+                  <td>${escapeHtml(item.deliverables)}</td>
+                  <td>${escapeHtml(item.communication)}</td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function buildProposalDraft(card, result) {
+  const context = getProposalContext(card, result);
+  const optionLines = [
+    ...context.includedOptionLines.map((line) => `패키지 포함: ${line}`),
+    ...context.paidOptionLines.map((line) => `추가 선택: ${line}`),
+  ];
+  const stageLines = getProposalExecutionPlan().map((item) => `${item.stage}: ${item.role} / 산출물: ${item.deliverables}`);
+  const paymentLines = getPaymentTextLines(card, result);
+
+  return `빅플래너 PM 제안서
+
+1. 제안 요약
+- 프로젝트명: ${context.projectName}
+- 추천 패키지: ${result.selectedPackage.label}
+- 관리대상 사업비: ${formatWon(result.managedCost)}
+- 예정 용역기간: ${result.months}개월
+- 총 제안금액: ${formatWon(context.total)}
+- 사업비 대비 환산 요율: ${context.totalRate}
+- 결제 방식: ${context.paymentTerms.title}
+
+2. 제안 배경 및 추천 사유
+${context.diagnosis || result.selectedPackage.fit}
+본 제안은 단순 사업비 요율 적용이 아니라 프로젝트 규모, 현재 단계, 발주자 관여도, 리스크 수준, 선택 업무 범위를 함께 반영한 PM 수행 제안입니다. 빅플래너는 발주자 관점에서 일정, 비용, 설계·시공 의사결정, 커뮤니케이션을 체계화하여 프로젝트 실행 리스크를 낮추는 역할을 수행합니다.
+
+3. PM 수행계획
+${toContractList(stageLines)}
+
+4. 제안 업무범위
+- 기본 PM 업무: ${context.taskSummary.join(" / ")}
+- 패키지 포함 및 선택 업무
+${toContractList(optionLines)}
+
+5. 비용 제안
+- 기본 PM비: ${formatWon(result.baseFee)}
+- 사업비 연동 보수: ${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})
+- 옵션·가산: ${formatWon(result.optionFee)}
+- 공급가: ${formatWon(result.subtotal)}
+- VAT: ${formatWon(context.vat)}
+- 총 제안금액: ${formatWon(context.total)}
+- 포함 사업비 기준: ${context.includedCostLines.length ? context.includedCostLines.join(", ") : "미입력"}
+- 제외 또는 별도 참고 사업비: ${context.excludedCostLines.length ? context.excludedCostLines.join(", ") : "해당 없음"}
+
+6. 비용 결제 조건
+${toContractList(paymentLines)}
+
+7. 기대효과
+- 발주자 의사결정에 필요한 비교표, 검토 의견, 회의록, 이슈 리스트를 남겨 결정 근거를 명확히 합니다.
+- 설계변경, 견적 누락, 기성 청구, 공정 지연 등 비용·일정 리스크를 조기에 발견하고 대응안을 제시합니다.
+- 설계자, 감리자, 시공사, 인허가·금융 관계자와의 커뮤니케이션을 정리해 발주자 부담을 줄입니다.
+- 준공과 정산 단계까지 산출물과 확인사항을 정리하여 인수인계 품질을 높입니다.
+
+8. 계약 전 확인사항
+- 본 제안서는 PM 용역 범위와 수수료 산정을 위한 계약 전 제안서입니다.
+- 설계, 감리, 시공, 법률, 세무, 금융상품 알선, 부동산 중개 업무는 별도 전문가 업무로 구분합니다.
+- 프로젝트 규모, 일정, 현장 방문 빈도, 선택 옵션, 대외 협의 범위가 변경될 경우 제안금액과 업무범위는 조정될 수 있습니다.`;
+}
+
+function buildProposalDraftHtml(card, result) {
+  const context = getProposalContext(card, result);
+  const summaryRows = [
+    ["프로젝트명", context.projectName],
+    ["추천 패키지", `${result.selectedPackage.label} / ${result.selectedPackage.description}`],
+    ["관리대상 사업비", formatWon(result.managedCost)],
+    ["예정 용역기간", `${result.months}개월`],
+    ["총 제안금액", formatWon(context.total)],
+    ["사업비 대비 환산 요율", context.totalRate],
+    ["결제 방식", `${context.paymentTerms.title} / ${context.paymentTerms.summary}`],
+  ];
+
+  return `
+    <article class="legal-page proposal-page">
+      <header class="legal-cover legal-cover--attachment legal-cover--proposal">
+        <div>
+          <p>BIGPLANNER PARTNERS</p>
+          <h2>빅플래너 PM 제안서</h2>
+          <span>발주자 의사결정과 프로젝트 실행을 위한 PM 수행 제안</span>
+        </div>
+        <dl>
+          <div><dt>문서번호</dt><dd>${escapeHtml(buildDocumentNumber("PRO"))}</dd></div>
+          <div><dt>작성일</dt><dd>${escapeHtml(formatDocumentDate())}</dd></div>
+          <div><dt>프로젝트</dt><dd>${escapeHtml(context.projectName)}</dd></div>
+          <div><dt>제안금액</dt><dd>${escapeHtml(formatWon(context.total))}</dd></div>
+        </dl>
+      </header>
+
+      <section class="legal-section proposal-summary-section">
+        <h3>1. Executive Summary</h3>
+        <div class="estimate-total-grid proposal-total-grid">
+          <div><span>추천 패키지</span><strong>${escapeHtml(result.selectedPackage.label)}</strong></div>
+          <div><span>관리대상 사업비</span><strong>${escapeHtml(formatWon(result.managedCost))}</strong></div>
+          <div><span>예정 기간</span><strong>${result.months}개월</strong></div>
+          <div><span>공급가</span><strong>${escapeHtml(formatWon(result.subtotal))}</strong></div>
+          <div><span>VAT</span><strong>${escapeHtml(formatWon(context.vat))}</strong></div>
+          <div class="proposal-grand-total"><span>총 제안금액</span><strong>${escapeHtml(formatWon(context.total))}</strong></div>
+        </div>
+        ${renderDocumentTable(summaryRows)}
+      </section>
+
+      <section class="legal-section">
+        <h3>2. 제안 배경 및 추천 사유</h3>
+        <div class="legal-note-box proposal-lead-box">
+          <p>${escapeHtml(context.diagnosis || result.selectedPackage.fit)}</p>
+          <p>본 제안은 단순 사업비 요율 적용이 아니라 프로젝트 규모, 현재 단계, 발주자 관여도, 리스크 수준, 선택 업무 범위를 함께 반영한 PM 수행 제안입니다.</p>
+        </div>
+        ${renderDocumentBullets([
+          "발주자 관점에서 목표, 예산, 일정, 품질, 리스크를 한 흐름으로 관리합니다.",
+          "설계자, 감리자, 시공사, 인허가·금융 관계자 사이의 커뮤니케이션을 정리합니다.",
+          "주요 의사결정은 회의록, 비교표, 검토 의견, 이슈 리스트로 근거를 남깁니다.",
+        ])}
+      </section>
+
+      <section class="legal-section">
+        <h3>3. PM 수행계획</h3>
+        ${renderProposalStageTable()}
+      </section>
+
+      <section class="legal-section">
+        <h3>4. 제안 업무범위</h3>
+        ${renderDocumentTable([
+          ["기본 PM 업무", { html: renderLegalChips(context.taskSummary) }],
+          ["패키지 포함 업무", { html: renderLegalChips(context.includedOptionLines) }],
+          ["추가 선택 업무", { html: renderLegalChips(context.paidOptionLines) }],
+          ["포함 사업비 기준", { html: renderLegalChips(context.includedCostLines, "미입력") }],
+          ["제외·별도 참고 사업비", { html: renderLegalChips(context.excludedCostLines) }],
+        ])}
+      </section>
+
+      <section class="legal-section">
+        <h3>5. 비용 제안</h3>
+        ${renderDocumentTable([
+          ["기본 PM비", formatWon(result.baseFee)],
+          ["사업비 연동 보수", `${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})`],
+          ["옵션·가산", formatWon(result.optionFee)],
+          ["공급가", formatWon(result.subtotal)],
+          ["VAT", formatWon(context.vat)],
+          ["총 제안금액", formatWon(context.total)],
+          ["사업비 대비 환산 요율", context.totalRate],
+        ])}
+      </section>
+
+      <section class="legal-section">
+        <h3>6. 비용 결제 조건</h3>
+        ${renderPaymentTableHtml(card, result)}
+      </section>
+
+      <section class="legal-section">
+        <h3>7. 기대효과</h3>
+        ${renderDocumentBullets([
+          "발주자 의사결정에 필요한 비교표, 검토 의견, 회의록, 이슈 리스트를 남겨 결정 근거를 명확히 합니다.",
+          "설계변경, 견적 누락, 기성 청구, 공정 지연 등 비용·일정 리스크를 조기에 발견하고 대응안을 제시합니다.",
+          "준공과 정산 단계까지 산출물과 확인사항을 정리하여 인수인계 품질을 높입니다.",
+        ])}
+      </section>
+
+      <section class="legal-section legal-note-box">
+        <h3>8. 계약 전 확인사항</h3>
+        ${renderDocumentBullets([
+          "본 제안서는 PM 용역 범위와 수수료 산정을 위한 계약 전 제안서입니다.",
+          "설계, 감리, 시공, 법률, 세무, 금융상품 알선, 부동산 중개 업무는 별도 전문가 업무로 구분합니다.",
+          "프로젝트 규모, 일정, 현장 방문 빈도, 선택 옵션, 대외 협의 범위가 변경될 경우 제안금액과 업무범위는 조정될 수 있습니다.",
+        ])}
+      </section>
+    </article>
+  `;
 }
 
 function buildScopeAttachment(card, result) {
@@ -2558,7 +2820,7 @@ function refreshDocumentOutput(card) {
   const result = calculateProject(card);
   if (type === "proposal") {
     const text = buildProposalDraft(card, result);
-    setDocumentOutput(card, { type, text, title: "빅플래너 PM 제안서" });
+    setDocumentOutput(card, { type, text, html: buildProposalDraftHtml(card, result), title: "빅플래너 PM 제안서" });
   }
   if (type === "scope") {
     setDocumentOutput(card, {
@@ -2709,7 +2971,7 @@ function createProject(initialPackage = "standard") {
   fragment.querySelector(".proposal-generate").addEventListener("click", () => {
     const result = calculateProject(card);
     const text = buildProposalDraft(card, result);
-    setDocumentOutput(card, { type: "proposal", text, title: "빅플래너 PM 제안서" });
+    setDocumentOutput(card, { type: "proposal", text, html: buildProposalDraftHtml(card, result), title: "빅플래너 PM 제안서" });
   });
 
   fragment.querySelector(".estimate-generate").addEventListener("click", () => {

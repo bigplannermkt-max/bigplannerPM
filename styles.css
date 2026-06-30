@@ -2123,6 +2123,45 @@ select:focus {
   color: #20231f;
 }
 
+.legal-cover--proposal {
+  background: #f6faf7;
+  border-color: #1f6f54;
+}
+
+.proposal-total-grid {
+  margin-bottom: 14px;
+}
+
+.proposal-grand-total {
+  color: #fff !important;
+  background: #1f6f54 !important;
+  border-color: #1f6f54 !important;
+}
+
+.proposal-grand-total span,
+.proposal-grand-total strong {
+  color: #fff !important;
+}
+
+.proposal-lead-box p {
+  margin: 0 0 8px;
+  color: #30352f;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.proposal-lead-box p:last-child {
+  margin-bottom: 0;
+}
+
+.proposal-stage-table th:first-child {
+  width: 18%;
+}
+
+.proposal-stage-table td {
+  line-height: 1.55;
+}
+
 .pm-task-grid {
   display: grid;
   gap: 12px;
@@ -2557,8 +2596,8 @@ select:focus {
 .total-result {
   grid-column: span 2;
   color: #fff;
-  background: var(--green-dark) !important;
-  border-color: var(--green-dark) !important;
+  background: #1f6f54 !important;
+  border-color: #1f6f54 !important;
 }
 
 .total-result span {
@@ -3289,8 +3328,8 @@ body.theme-light .result-grid > div {
 body.theme-dark .result-grid > .total-result,
 body.theme-light .result-grid > .total-result {
   color: #fff;
-  background: var(--green-dark) !important;
-  border-color: var(--green-dark) !important;
+  background: #1f6f54 !important;
+  border-color: #1f6f54 !important;
 }
 
 body.theme-dark .total-result span,
@@ -3425,6 +3464,19 @@ body.theme-light .legal-page {
   border-color: #c8ccc5 !important;
 }
 
+.document-preview .estimate-total-grid > .proposal-grand-total,
+.document-preview .proposal-grand-total,
+.document-preview .proposal-grand-total span,
+.document-preview .proposal-grand-total strong {
+  color: #fff !important;
+}
+
+.document-preview .estimate-total-grid > .proposal-grand-total,
+.document-preview .proposal-grand-total {
+  background: #1f6f54 !important;
+  border-color: #1f6f54 !important;
+}
+
 body.is-document-printing .document-output.is-printing .document-preview,
 body.is-document-printing .document-output.is-printing .legal-page {
   color: #20231f !important;
@@ -3505,6 +3557,19 @@ body.is-document-printing .document-output.is-printing .estimate-grand-total str
 body.is-document-printing .document-output.is-printing .estimate-grand-total {
   background: #f4f5f1 !important;
   border-color: #c8ccc5 !important;
+}
+
+body.is-document-printing .document-output.is-printing .estimate-total-grid > .proposal-grand-total,
+body.is-document-printing .document-output.is-printing .proposal-grand-total,
+body.is-document-printing .document-output.is-printing .proposal-grand-total span,
+body.is-document-printing .document-output.is-printing .proposal-grand-total strong {
+  color: #fff !important;
+}
+
+body.is-document-printing .document-output.is-printing .estimate-total-grid > .proposal-grand-total,
+body.is-document-printing .document-output.is-printing .proposal-grand-total {
+  background: #1f6f54 !important;
+  border-color: #1f6f54 !important;
 }
 
 @media print {
@@ -3639,6 +3704,19 @@ body.is-document-printing .document-output.is-printing .estimate-grand-total {
   .document-output.is-printing .estimate-grand-total {
     background: #f4f5f1 !important;
     border-color: #c8ccc5 !important;
+  }
+
+  .document-output.is-printing .estimate-total-grid > .proposal-grand-total,
+  .document-output.is-printing .proposal-grand-total,
+  .document-output.is-printing .proposal-grand-total span,
+  .document-output.is-printing .proposal-grand-total strong {
+    color: #fff !important;
+  }
+
+  .document-output.is-printing .estimate-total-grid > .proposal-grand-total,
+  .document-output.is-printing .proposal-grand-total {
+    background: #1f6f54 !important;
+    border-color: #1f6f54 !important;
   }
 
   .document-output.is-printing .legal-cover {
