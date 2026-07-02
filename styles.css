@@ -2007,6 +2007,8 @@ select:focus {
 }
 
 .signature-grid > div {
+  display: flex;
+  flex-direction: column;
   min-height: 220px;
   padding: 16px;
   border: 1px solid #20231f;
@@ -2024,13 +2026,15 @@ select:focus {
 }
 
 .signature-grid span {
-  min-height: 28px;
   color: #30352f;
   font-size: 12px;
+  line-height: 1.55;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .signature-grid b {
-  margin-top: 18px;
+  margin-top: auto;
   padding-top: 26px;
   text-align: right;
   border-top: 1px solid #d7d9d4;
