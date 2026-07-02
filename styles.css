@@ -3491,6 +3491,17 @@ body.is-document-printing .document-output.is-printing .legal-page {
   --muted: #67706b;
 }
 
+body.is-document-printing .document-output.is-printing .document-preview {
+  min-height: auto !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+}
+
+body.is-document-printing .document-output.is-printing .legal-page {
+  min-height: auto !important;
+}
+
 body.is-document-printing .document-output.is-printing .legal-cover,
 body.is-document-printing .document-output.is-printing .legal-cover--attachment,
 body.is-document-printing .document-output.is-printing .legal-section,
@@ -3592,7 +3603,7 @@ body.is-document-printing .document-output.is-printing .proposal-grand-total {
   body.is-document-printing .topbar,
   body.is-document-printing .summary-grid,
   body.is-document-printing .reference-section,
-  body.is-document-printing .table-section > .table-header,
+  body.is-document-printing .table-shell > .table-header,
   body.is-document-printing .project-card > :not(.proposal-block),
   body.is-document-printing .proposal-block > .option-block__head,
   body.is-document-printing .document-action-grid,
@@ -3602,7 +3613,8 @@ body.is-document-printing .document-output.is-printing .proposal-grand-total {
   }
 
   body.is-document-printing .app,
-  body.is-document-printing .table-section,
+  body.is-document-printing .project-area,
+  body.is-document-printing .table-shell,
   body.is-document-printing #projectRoot,
   body.is-document-printing .project-card,
   body.is-document-printing .proposal-block,
@@ -3614,6 +3626,7 @@ body.is-document-printing .document-output.is-printing .proposal-grand-total {
     background: #fff !important;
     border: 0 !important;
     box-shadow: none !important;
+    overflow: visible !important;
   }
 
   .document-output.is-printing .document-preview {
@@ -3727,9 +3740,13 @@ body.is-document-printing .document-output.is-printing .proposal-grand-total {
     break-inside: avoid;
   }
 
-  .document-output.is-printing .legal-section,
+  .document-output.is-printing .legal-section {
+    break-inside: auto;
+  }
+
   .document-output.is-printing .legal-article,
-  .document-output.is-printing .signature-grid > div {
+  .document-output.is-printing .signature-grid > div,
+  .document-output.is-printing .legal-note-box {
     break-inside: avoid;
   }
 
