@@ -2245,7 +2245,7 @@ function buildEstimateDraftHtml(card, result) {
         <div class="estimate-cover__main">
           <p>PM Fee Estimate</p>
           <h2>PM 상세 견적서</h2>
-          <span>${escapeHtml(projectName)}의 선택 조건과 산정 기준을 한 장에서 검토할 수 있도록 정리한 계약 전 견적 문서입니다.</span>
+          <span>${escapeHtml(projectName)}의 선택 조건과 산정 기준을 기준으로 작성한 계약 전 검토용 산출내역서</span>
         </div>
         <dl class="estimate-cover__meta">
           <div><dt>문서번호</dt><dd>${escapeHtml(documentNumber)}</dd></div>
@@ -2268,15 +2268,6 @@ function buildEstimateDraftHtml(card, result) {
           <div><dt>적용 구간</dt><dd>${escapeHtml(result.bracket.label)}</dd></div>
           <div><dt>환산 요율</dt><dd>${escapeHtml(pricing.convertedRateText)}</dd></div>
         </dl>
-      </section>
-
-      <section class="estimate-section-index">
-        <span>01 기본정보</span>
-        <span>02 산정기준</span>
-        <span>03 PM비</span>
-        <span>04 포함업무</span>
-        <span>05 추가내역</span>
-        <span>06 최종금액</span>
       </section>
 
       <section class="legal-section">
