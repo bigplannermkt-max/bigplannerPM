@@ -2212,6 +2212,8 @@ function buildEstimateDraftHtml(card, result) {
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
   const pricing = getPricingSummary(result);
+  const documentNumber = buildDocumentNumber("PM-EST");
+  const documentDate = formatDocumentDate();
   const includedOptionRows = result.includedOptionItems.map((option) => ({
     label: option.label,
     note: option.description,
@@ -2238,19 +2240,44 @@ function buildEstimateDraftHtml(card, result) {
   ];
 
   return `
-    <article class="legal-page estimate-page">
-      <header class="legal-cover legal-cover--attachment">
-        <div>
+    <article class="legal-page estimate-page estimate-page--refined">
+      <header class="legal-cover legal-cover--attachment estimate-cover">
+        <div class="estimate-cover__main">
           <p>PM Fee Estimate</p>
           <h2>PM 상세 견적서</h2>
-          <span>선택된 전체 산정 조건을 기준으로 작성한 계약 전 검토용 산출내역서</span>
+          <span>${escapeHtml(projectName)}의 선택 조건과 산정 기준을 한 장에서 검토할 수 있도록 정리한 계약 전 견적 문서입니다.</span>
         </div>
-        <dl>
-          <div><dt>문서번호</dt><dd>${escapeHtml(buildDocumentNumber("PM-EST"))}</dd></div>
-          <div><dt>작성일</dt><dd>${escapeHtml(formatDocumentDate())}</dd></div>
-          <div><dt>유효기간</dt><dd>30일</dd></div>
+        <dl class="estimate-cover__meta">
+          <div><dt>문서번호</dt><dd>${escapeHtml(documentNumber)}</dd></div>
+          <div><dt>작성일</dt><dd>${escapeHtml(documentDate)}</dd></div>
+          <div><dt>견적 유효기간</dt><dd>30일</dd></div>
         </dl>
       </header>
+
+      <section class="estimate-brief">
+        <div class="estimate-brief__total">
+          <span>총 견적금액</span>
+          <strong>${formatWon(pricing.total)}</strong>
+          <small>VAT 포함 · 성과보수 제외</small>
+        </div>
+        <dl class="estimate-brief__facts">
+          <div><dt>프로젝트명</dt><dd>${escapeHtml(projectName)}</dd></div>
+          <div><dt>선택 패키지</dt><dd>${escapeHtml(result.selectedPackage.label)}</dd></div>
+          <div><dt>예정 용역기간</dt><dd>${result.months}개월</dd></div>
+          <div><dt>관리대상 사업비</dt><dd>${formatWon(result.managedCost)}</dd></div>
+          <div><dt>적용 구간</dt><dd>${escapeHtml(result.bracket.label)}</dd></div>
+          <div><dt>환산 요율</dt><dd>${escapeHtml(pricing.convertedRateText)}</dd></div>
+        </dl>
+      </section>
+
+      <section class="estimate-section-index">
+        <span>01 기본정보</span>
+        <span>02 산정기준</span>
+        <span>03 PM비</span>
+        <span>04 포함업무</span>
+        <span>05 추가내역</span>
+        <span>06 최종금액</span>
+      </section>
 
       <section class="legal-section">
         <h3>1. 견적 기본정보</h3>
@@ -2336,6 +2363,7 @@ function buildEstimateDraftHtml(card, result) {
           <div><span>VAT</span><strong>${formatWon(pricing.vat)}</strong></div>
           <div class="estimate-grand-total"><span>총 견적금액</span><strong>${formatWon(pricing.total)}</strong><small>성과보수 제외</small></div>
         </div>
+        <p class="estimate-total-note">상기 총액은 현재 입력 조건 기준의 계약 전 검토 금액이며, 업무범위 또는 사업비 변경 시 최종 계약서에서 조정될 수 있습니다.</p>
       </section>
 
       <section class="legal-section legal-note-box">
