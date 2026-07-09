@@ -395,6 +395,77 @@ const optionTaskTitlesShownElsewhere = new Set([
   "입주·운영 준비 지원",
 ]);
 
+const successRules = [
+  {
+    id: "veSaving",
+    label: "VE·공사비 절감",
+    description: "승인·정산에 반영된 VE 또는 공사비 절감액을 기준으로 산정합니다.",
+    basisLabel: "승인·정산 반영 절감액",
+    rate: 10,
+    cap: 3000 * MANWON,
+    condition: "갑이 승인하고 설계자·시공사가 적용 가능하다고 확인한 대안이 최종 계약 또는 정산에 반영된 경우",
+    paymentTiming: "성과 확정일 또는 정산 반영일로부터 30일 이내",
+    caution: "품질·안전·법규 저하 없이 반영된 절감액만 기준으로 합니다.",
+  },
+  {
+    id: "bidSaving",
+    label: "견적 협상·예산 절감",
+    description: "견적 비교, 누락 조정, 협상으로 확정된 예산 절감액을 기준으로 산정합니다.",
+    basisLabel: "견적 비교·협상 확정 절감액",
+    rate: 7,
+    cap: 2000 * MANWON,
+    condition: "견적 비교표와 계약금액 확정자료로 절감액이 확인되고 갑이 해당 성과를 인정한 경우",
+    paymentTiming: "시공계약 체결일 또는 절감액 확정일로부터 30일 이내",
+    caution: "단순 견적 차이가 아니라 PM 검토·협상으로 확정된 절감액을 기준으로 합니다.",
+  },
+  {
+    id: "scheduleSaving",
+    label: "일정 단축·손실 회피",
+    description: "합의한 일일 손실회피액과 단축일수를 기준으로 산정합니다.",
+    basisLabel: "합의 손실회피액",
+    rate: 5,
+    cap: 1500 * MANWON,
+    condition: "마스터 일정 대비 단축일수와 일일 손실회피액을 갑과 을이 서면으로 확정한 경우",
+    paymentTiming: "단축 성과 확정일로부터 30일 이내",
+    caution: "손실회피액 산정 근거와 단축일수를 별도 기록으로 남깁니다.",
+  },
+  {
+    id: "financeSaving",
+    label: "PF·금융조건 개선",
+    description: "발주자가 인정한 금융비 절감액 또는 조건 개선 효과를 기준으로 산정합니다.",
+    basisLabel: "인정 금융비 절감액",
+    rate: 3,
+    cap: 3000 * MANWON,
+    condition: "금융기관 제안 조건 비교표와 갑의 승인자료로 절감액 또는 개선 효과가 확정된 경우",
+    paymentTiming: "금융조건 확정일 또는 대출 실행일로부터 30일 이내",
+    caution: "직접 금융상품 알선, 대출 알선, 금융계약 대리는 제외합니다.",
+    badges: ["직접 알선 제외"],
+    special: true,
+  },
+  {
+    id: "dealSuccess",
+    label: "임대·매각 특수성과",
+    description: "발주자가 별도 인정한 순성과액을 기준으로 산정합니다.",
+    basisLabel: "별도 인정 순성과액",
+    rate: 2,
+    cap: 3000 * MANWON,
+    condition: "임대·매각 조건 개선 또는 성사 기여 범위와 순성과액을 별도 특약으로 확정한 경우",
+    paymentTiming: "임대차계약 또는 매매계약 체결일로부터 30일 이내",
+    caution: "부동산 중개행위가 아니라 자료관리, 조건검토, 외부 중개사 협업관리 범위입니다.",
+    badges: ["별도계약/특약 필요"],
+    special: true,
+  },
+  {
+    id: "manual",
+    label: "직접 입력",
+    description: "성과 기준이 특수한 경우 금액과 사유를 직접 입력합니다.",
+    direct: true,
+    condition: "성과 기준, 금액, 지급 조건을 갑과 을이 별도 합의한 경우",
+    paymentTiming: "성과 확정일 또는 별도 합의일로부터 30일 이내",
+    caution: "산정 근거를 계약서 특약 또는 회의록에 별도로 남기는 것을 전제로 합니다.",
+  },
+];
+
 const packageTaskNumbers = {
   diagnostic: [1, 2, 3, 4, 5, 7],
   lite: [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 15, 16, 17, 19, 20, 21, 23, 24],
@@ -518,6 +589,7 @@ const elements = {
   stickyDuration: document.querySelector("#stickyDuration"),
   stickyManagedCost: document.querySelector("#stickyManagedCost"),
   stickyPaymentMethod: document.querySelector("#stickyPaymentMethod"),
+  stickySuccessOption: document.querySelector("#stickySuccessOption"),
   stickyVatState: document.querySelector("#stickyVatState"),
 };
 
@@ -593,10 +665,6 @@ function formatPercent(rate) {
   return `${(rate * 100).toFixed(2).replace(/\.00$/, "")}%`;
 }
 
-function formatContractMoney(amount) {
-  return `${formatWon(amount)}${amount > 0 ? "정" : ""}`;
-}
-
 function toContractList(items, fallback = "해당 없음") {
   if (!items.length) return `- ${fallback}`;
   return items.map((item) => `- ${item}`).join("\n");
@@ -620,9 +688,22 @@ function buildDocumentNumber(prefix) {
   return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-001`;
 }
 
-function getContractTotal(result) {
+function getPricingSummary(result) {
   const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  return result.subtotal + vat;
+  const total = result.subtotal + vat;
+  const convertedRate = result.managedCost > 0 ? total / result.managedCost : 0;
+
+  return {
+    vat,
+    total,
+    convertedRate,
+    convertedRateText: result.managedCost > 0 ? formatPercent(convertedRate) : "-",
+    successFeeNote: "성과보수 제외",
+  };
+}
+
+function getContractTotal(result) {
+  return getPricingSummary(result).total;
 }
 
 function clampPercent(value) {
@@ -771,39 +852,11 @@ function syncPaymentRateDisplays(card, total = null) {
     const amountDisplay = part.field?.querySelector("[data-payment-amount-display]");
     if (amountDisplay) {
       amountDisplay.textContent = Number.isFinite(total)
-        ? `총 제안금액 기준 ${formatWon(total * (rate / 100))}`
-        : "총 제안금액 기준 -";
+        ? `총 제안금액(성과보수 제외) 기준 ${formatWon(total * (rate / 100))}`
+        : "총 제안금액(성과보수 제외) 기준 -";
     }
   });
   renderPaymentAllocation(card);
-}
-
-function renderPaymentAllocationLegacy(card) {
-  const bar = card.querySelector(".payment-allocation-bar");
-  if (!bar) return;
-  const parts = getPaymentRateParts(card);
-  const total = parts.reduce((sum, part) => sum + clampPercent(readNumber(part.input)), 0) || 100;
-  let cumulative = 0;
-  const colors = ["#1f6f54", "#4f86a8", "#8a6f2a", "#6f8f45", "#7d6a9a", "#9a6748", "#48556a", "#2f7c83"];
-  const segments = parts
-    .map((part, index) => {
-      const rate = clampPercent(readNumber(part.input));
-      const share = total > 0 ? (rate / total) * 100 : 0;
-      return `
-        <div class="payment-allocation-segment" style="flex-basis:${share}%; background:${colors[index % colors.length]}">
-          <span>${escapeHtml(part.label)} ${rate.toFixed(1).replace(/\.0$/, "")}%</span>
-        </div>
-      `;
-    })
-    .join("");
-  const handles = parts
-    .slice(0, -1)
-    .map((part, index) => {
-      cumulative += clampPercent(readNumber(part.input));
-      return `<input class="payment-boundary-slider" type="range" min="0" max="100" step="1" value="${Math.round(cumulative)}" data-boundary-index="${index}" aria-label="${escapeHtml(part.label)} 경계 조정" />`;
-    })
-    .join("");
-  bar.innerHTML = `<div class="payment-allocation-track">${segments}</div>${handles}`;
 }
 
 function applyPaymentBoundary(card, boundaryIndex, boundaryValue) {
@@ -924,7 +977,7 @@ function renderPaymentMidRows(card, resetRates = false, targetCount = null) {
       <div class="rate-slider-field">
         <div class="rate-slider-field__value">
           <strong data-payment-rate-display>${rate}%</strong>
-          <small data-payment-amount-display>총 제안금액 기준 -</small>
+          <small data-payment-amount-display>총 제안금액(성과보수 제외) 기준 -</small>
         </div>
         <input class="payment-mid-rate payment-rate-value" type="hidden" value="${rate}" />
       </div>
@@ -996,6 +1049,80 @@ function renderCompactBullets(items, fallback = "해당 없음") {
 function renderLegalChips(items, fallback = "해당 없음") {
   const list = items.length ? items : [fallback];
   return `<div class="legal-chip-list">${list.map((item) => `<span class="legal-chip">${escapeHtml(item)}</span>`).join("")}</div>`;
+}
+
+function getSuccessFeeTextLines(result, fallback = "선택된 성과보수 항목이 없습니다.") {
+  const items = result.successItems || [];
+  if (!items.length) return [fallback];
+  return items.map((item) => {
+    if (item.direct) return `${item.label}: ${formatWon(item.amount)} / ${item.basisLabel} / 지급 ${item.paymentTiming}`;
+    const capText = item.cap > 0 ? ` / 상한 ${formatWon(item.cap)}` : "";
+    return `${item.label}: ${item.basisLabel} ${formatWon(item.basisAmount)} × ${item.rate}%${capText} = ${formatWon(item.amount)} / 지급 ${item.paymentTiming}`;
+  });
+}
+
+function getSuccessContractArticleLines(result) {
+  const items = result.successItems || [];
+  if (!items.length) {
+    return [
+      "VE 절감액, PF 실행, 임대 성사, 매각 성과 등 성과보수는 본 계약에 포함하지 않으며 별도 특약으로 정한다.",
+      "VE 성과보수를 정하는 경우, 갑이 승인하고 설계자·시공사가 적용 가능하다고 확인한 대안 중 품질·안전·법규 저하 없이 최종 계약 또는 정산에 반영된 절감액을 기준으로 한다.",
+      "PF, 임대, 매각 관련 업무는 자료 작성, 일정관리, 조건검토, 외부 전문가 또는 중개사 협업관리 범위로 한정하며 직접 알선 또는 중개행위로 해석하지 않는다.",
+    ];
+  }
+
+  return [
+    "성과보수는 총 계약 예정금액에 포함하지 않는 조건부 별도 옵션이며, 아래 선택 성과 항목이 객관적 자료와 갑의 승인 또는 정산 반영으로 확정된 경우에 한하여 별도 정산한다.",
+    ...items.map((item) => {
+      if (item.direct) return `${item.label}: ${item.basisLabel} 기준 ${formatWon(item.amount)}을 별도 성과보수 옵션으로 하며, 판정 조건은 "${item.condition}", 지급 시점은 "${item.paymentTiming}"으로 한다.`;
+      const capText = item.cap > 0 ? `, 상한 ${formatWon(item.cap)}` : "";
+      return `${item.label}: ${item.basisLabel} ${formatWon(item.basisAmount)} × ${item.rate}%${capText} = ${formatWon(item.amount)}을 별도 성과보수 옵션으로 산정하며, 판정 조건은 "${item.condition}", 지급 시점은 "${item.paymentTiming}"으로 한다.`;
+    }),
+    "성과보수 산정 기준금액, 보수율, 상한액, 판정 시점 또는 지급 시점이 변경되는 경우 갑과 을은 서면 또는 전자문서로 별도 합의한다.",
+    "PF·금융조건 개선, 임대·매각 특수성과는 자료 작성, 조건검토, 일정관리, 외부 전문가 또는 중개사 협업관리 범위이며 직접 중개, 금융상품 알선, 대리행위로 해석하지 않는다.",
+  ];
+}
+
+function renderSuccessFeeTable(result) {
+  const items = result.successItems || [];
+  return `
+    <div class="legal-table-scroll">
+      <table class="legal-table legal-table--wide legal-table--success-fee">
+        <thead>
+          <tr>
+            <th>성과 유형</th>
+            <th>산정 기준</th>
+            <th>공식·상한</th>
+            <th>성과보수 옵션</th>
+            <th>판정·지급 조건</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            items.length
+              ? items
+                  .map((item) => {
+                    const formula = item.direct
+                      ? "직접 입력"
+                      : `${formatWon(item.basisAmount)} × ${item.rate}%${item.cap > 0 ? ` / 상한 ${formatWon(item.cap)}` : ""}`;
+                    const note = [item.condition, `지급: ${item.paymentTiming}`, item.caution].filter(Boolean).join(" ");
+                    return `
+                      <tr>
+                        <td>${escapeHtml(item.label)}</td>
+                        <td>${escapeHtml(item.basisLabel)}</td>
+                        <td>${escapeHtml(formula)}</td>
+                        <td><strong>${formatWon(item.amount)}</strong></td>
+                        <td>${renderTwoLineCell(note)}</td>
+                      </tr>
+                    `;
+                  })
+                  .join("")
+              : `<tr><td colspan="5">선택된 성과보수 항목이 없습니다.</td></tr>`
+          }
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function getCompanyDisplayName() {
@@ -1228,6 +1355,21 @@ function formatAmountInput(input) {
   input.value = amount > 0 ? amount.toLocaleString("ko-KR") : "";
 }
 
+function syncCostComponentDisplays(card) {
+  card.querySelectorAll(".cost-component").forEach((input) => {
+    const label = input.closest("label");
+    if (!label) return;
+    let readable = label.querySelector(".cost-component-readable");
+    if (!readable) {
+      readable = document.createElement("small");
+      readable.className = "cost-component-readable";
+      label.append(readable);
+    }
+    const amount = readNumber(input);
+    readable.textContent = amount > 0 ? formatWon(amount) : "0원";
+  });
+}
+
 function sumCostComponents(card, kind) {
   return [...card.querySelectorAll(`.cost-component[data-cost-kind="${kind}"]`)].reduce(
     (sum, input) => sum + readNumber(input),
@@ -1259,10 +1401,12 @@ function distributeDefaultCost(card, totalCost) {
   card.querySelectorAll('.cost-component[data-cost-kind="excluded"]').forEach((input) => {
     input.value = "";
   });
+  syncCostComponentDisplays(card);
   syncManagedCost(card);
 }
 
 function updateCostBreakdown(card, managedCost) {
+  syncCostComponentDisplays(card);
   const excludedCost = sumCostComponents(card, "excluded");
   card.querySelector(".cost-readable").textContent = formatWon(managedCost);
   card.querySelector(".excluded-readable").textContent = formatWon(excludedCost);
@@ -1393,7 +1537,8 @@ function calculateProject(card) {
   const managedCost = syncManagedCost(card);
   const bracket = findCostBracket(managedCost);
   const months = Math.max(1, readNumber(card.querySelector(".duration-months")));
-  const successFee = readNumber(card.querySelector(".success-fee"));
+  const successResult = calculateSuccessFee(card);
+  const successFee = successResult.fee;
   const expenseFee = readNumber(card.querySelector(".expense-fee"));
   const manualAdjustment = readNumber(card.querySelector(".manual-adjustment"));
 
@@ -1413,13 +1558,14 @@ function calculateProject(card) {
     .filter((option) => option && !includedOptions.has(option.id));
   const includedOptionItems = options.filter((option) => includedOptions.has(option.id));
 
-  const subtotal = Math.max(0, baseFee + linkedFee + optionFee + successFee + expenseFee + manualAdjustment);
+  const optionAndAdjustmentFee = optionFee + expenseFee + manualAdjustment;
+  const subtotal = Math.max(0, baseFee + linkedFee + optionAndAdjustmentFee);
 
   return {
     baseFee,
     baseBreakdown,
     linkedFee,
-    optionFee: optionFee + successFee + expenseFee + manualAdjustment,
+    optionFee: optionAndAdjustmentFee,
     subtotal,
     bracket,
     linkedRate,
@@ -1428,6 +1574,7 @@ function calculateProject(card) {
     managedCost,
     months,
     successFee,
+    successItems: successResult.items,
     expenseFee,
     manualAdjustment,
     selectedPaidOptions,
@@ -1437,22 +1584,21 @@ function calculateProject(card) {
 
 function updateCard(card) {
   const result = calculateProject(card);
-  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  const displayTotal = result.subtotal + vat;
-  const convertedRate = result.managedCost > 0 ? displayTotal / result.managedCost : 0;
+  const pricing = getPricingSummary(result);
   const selectedPackage = packages[card.querySelector(".package-select").value];
   const intensity = selectedPackage.intensity;
 
   updateCostBreakdown(card, result.managedCost);
   syncPaymentUi(card, result);
+  syncSuccessRuleCards(card, result.successItems);
   card.querySelector(".base-fee").textContent = formatWon(result.baseFee);
   renderBaseFeeBreakdown(card, result);
   card.querySelector(".linked-fee").textContent = formatWon(result.linkedFee);
   card.querySelector(".option-fee").textContent = formatWon(result.optionFee);
   card.querySelector(".subtotal-fee").textContent = formatWon(result.subtotal);
-  card.querySelector(".vat-fee").textContent = formatWon(vat);
-  card.querySelector(".converted-rate").textContent = result.managedCost > 0 ? formatPercent(convertedRate) : "-";
-  card.querySelector(".project-total").textContent = formatWon(displayTotal);
+  card.querySelector(".vat-fee").textContent = formatWon(pricing.vat);
+  card.querySelector(".converted-rate").textContent = pricing.convertedRateText;
+  card.querySelector(".project-total").textContent = formatWon(pricing.total);
   card.querySelector(".calculation-note").textContent =
     result.bracket.totalRange[0] === 0
       ? `${intensityDescriptions[intensity]} · ${result.bracket.label} 구간은 투입인력 기준 별도 산정을 권장합니다. 현재 연동 요율은 ${formatPercent(result.linkedRate)}입니다.`
@@ -1462,21 +1608,20 @@ function updateCard(card) {
 }
 
 function updateSummary(result, card) {
-  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  const grandTotal = result.subtotal + vat;
-  const grandRate = result.managedCost > 0 ? grandTotal / result.managedCost : 0;
+  const pricing = getPricingSummary(result);
   const paymentMethod = getPaymentMethod(card) === "monthly" ? "B안 월정액" : "A안 단계별";
 
   elements.stickyBaseAmount.textContent = formatWon(result.baseFee);
   elements.stickyLinkedAmount.textContent = formatWon(result.linkedFee);
   elements.stickyLinkedRate.textContent = `적용 요율 ${formatPercent(result.linkedRate)}`;
   elements.stickyOptionAmount.textContent = formatWon(result.optionFee);
-  elements.stickyGrandAmount.textContent = formatWon(grandTotal);
-  elements.stickyGrandRate.textContent = result.managedCost > 0 ? `사업비 대비 ${formatPercent(grandRate)}` : "사업비 대비 -";
+  elements.stickyGrandAmount.textContent = formatWon(pricing.total);
+  elements.stickyGrandRate.textContent = result.managedCost > 0 ? `사업비 대비 ${pricing.convertedRateText}` : "사업비 대비 -";
   elements.stickyPackageName.textContent = `패키지: ${result.selectedPackage.label}`;
   elements.stickyDuration.textContent = `기간: ${result.months}개월`;
   elements.stickyManagedCost.textContent = `관리대상 사업비: ${formatWon(result.managedCost)}`;
   elements.stickyPaymentMethod.textContent = `결제: ${paymentMethod}`;
+  elements.stickySuccessOption.textContent = `성과보수 옵션: ${formatWon(result.successFee)}(총액 별도)`;
   elements.stickyVatState.textContent = elements.includeVat.checked ? "VAT 포함" : "VAT 별도";
 }
 
@@ -1531,84 +1676,12 @@ function getSelectedOptionLabels(result) {
   return [...included, ...selected];
 }
 
-function buildProposalDraftLegacy(card, result) {
-  const projectName = card.querySelector(".project-name").value || "프로젝트";
-  const optionLines = getSelectedOptionLabels(result);
-  const diagnosis = card.querySelector(".diagnosis-reason")?.textContent || "";
-  const total = result.subtotal + (elements.includeVat.checked ? result.subtotal * VAT_RATE : 0);
-  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
-  const includedCostLines = getCostBreakdownLines(card, "included");
-  const excludedCostLines = getCostBreakdownLines(card, "excluded");
-
-  return `빅플래너 PM 제안서
-
-1. 제안 개요
-본 프로젝트는 설계자, 시공사, 감리자, 인허가 관계자, 금융·임대·운영 관계자가 동시에 움직이는 프로젝트입니다. 빅플래너 PM은 발주자 관점에서 목표, 예산, 일정, 품질, 리스크, 커뮤니케이션을 관리하고 주요 의사결정이 기록과 근거를 갖고 진행되도록 지원합니다.
-
-본 제안은 단순히 사업비에 일정 요율을 곱하는 방식이 아니라, 프로젝트 규모, 참여 강도, 현재 단계, 리스크 수준, 업무 범위를 나누어 산정합니다. 소규모 건축 프로젝트도 착수, 설계 조율, 견적 비교, 계약 검토, 공정회의, 기성 검토, 설계변경 관리, 준공 정산 등 고정 업무가 발생하므로 기본 PM비를 우선 반영하고, 사업비 연동 보수와 옵션업무비를 별도로 제시합니다.
-
-2. 추천 패키지
-- 선택 패키지: ${result.selectedPackage.label}
-- 패키지 성격: ${result.selectedPackage.description}
-- 추천/선택 사유: ${diagnosis || result.selectedPackage.fit}
-- 참여 방식: ${result.selectedPackage.engagement}
-
-3. PM 운영 목표
-- 발주자 목표 정리: 사용 목적, 임대·매각 계획, 예산 한도, 품질 기준, 준공 희망일을 의사결정 기준으로 정리합니다.
-- 일정 관리: 설계, 인허가, 견적, 계약, 착공, 주요 공정, 사용승인, 정산까지 마일스톤을 관리합니다.
-- 비용 관리: 관리대상 사업비, 견적 비교, 변경 비용, 기성 청구, 준공 정산을 추적합니다.
-- 품질·범위 관리: 설계 의도, 공사 범위, 누락·중복 항목, 시공 품질 이슈를 점검합니다.
-- 리스크 관리: 인허가 지연, 공사비 상승, 민원, 설계변경, 시공사 리스크를 이슈 리스트로 관리합니다.
-- 커뮤니케이션 관리: 발주자, 설계자, 감리자, 시공사 간 회의체와 보고 체계를 운영합니다.
-
-4. 단계별 수행 방식
-- 착수·기획: 사업 목표, 예산 프레임, 관리대상 사업비, 마스터 일정, 주요 리스크를 정리합니다.
-- 설계·인허가: 설계 방향, 예산 적합성, 인허가 보완사항, 설계변경 영향을 검토합니다.
-- 견적·계약: 견적 요청 기준, 공종별 금액, 누락 항목, 지급 조건, 계약조건을 비교합니다.
-- 시공 단계: 공정회의, 기성 검토, 변경관리, 품질 이슈, 의사결정 항목을 관리합니다.
-- 준공·정산: 사용승인 일정, 펀치리스트, 하자·보완사항, 준공 정산 검토를 지원합니다.
-
-5. 산정 기준
-- 관리대상 사업비: ${formatWon(result.managedCost)}
-- 포함 사업비 세부: ${includedCostLines.length ? includedCostLines.join(", ") : "미입력"}
-- 제외 또는 별도 참고: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
-- 예정 기간: ${result.months}개월
-- 기본 PM비: ${formatWon(result.baseFee)}
-- 사업비 연동 보수: ${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})
-- 옵션·가산: ${formatWon(result.optionFee)}
-- 총 제안금액: ${formatWon(total)}
-- 관리대상 사업비 대비 환산 요율: ${totalRate}
-
-6. 주요 산출물
-- 사업 목표 및 범위 정리표
-- 관리대상 사업비 산정표
-- 마스터 일정표
-- 견적 비교표 및 계약조건 검토 메모
-- 회의록 및 오픈이슈 리스트
-- 변경관리표
-- 기성검토 의견
-- 준공 전 펀치리스트 및 정산 검토표
-
-7. 포함 및 선택 업무
-${toContractList(optionLines)}
-
-8. 의사결정 및 업무 경계
-빅플래너 PM은 발주자의 이익을 기준으로 검토 의견과 대안을 제시하지만, 발주자의 사전 승인 없이 비용 발생, 계약 체결, 설계변경 확정, 공사비 지급, 금융상품 선택, 임대·매각 조건 확정 등 금전적 의사결정을 대신하지 않습니다.
-
-본 PM 용역은 건축주를 위한 사업관리, 일정관리, 비용관리, 품질관리, 커뮤니케이션 관리 및 의사결정 지원 업무입니다. 설계, 법정 감리, 시공, 구조·전기·소방 등 전문기술 검토, 법률대리, 세무자문, 금융상품 알선, 부동산 중개행위는 별도 전문가의 업무로 구분합니다.
-
-9. 견적 유효조건
-본 견적은 작성일로부터 30일간 유효하며, 관리대상 사업비, 용역기간, 현장방문 빈도, 회의 빈도, 업무범위, 옵션 선택이 변경되는 경우 재산정할 수 있습니다.`;
-}
-
 function getProposalContext(card, result) {
   const projectName = card.querySelector(".project-name").value || "프로젝트";
   const diagnosis = card.querySelector(".diagnosis-reason")?.textContent?.trim() || "";
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
-  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  const total = result.subtotal + vat;
-  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
+  const pricing = getPricingSummary(result);
   const paymentTerms = getPaymentTerms(card, result);
   const includedOptionLines = result.includedOptionItems.map((option) => `${option.label}: ${option.description}`);
   const paidOptionLines = result.selectedPaidOptions.map((option) => {
@@ -1621,12 +1694,13 @@ function getProposalContext(card, result) {
     diagnosis,
     includedCostLines,
     excludedCostLines,
-    vat,
-    total,
-    totalRate,
+    vat: pricing.vat,
+    total: pricing.total,
+    totalRate: pricing.convertedRateText,
     paymentTerms,
     includedOptionLines,
     paidOptionLines,
+    successLines: getSuccessFeeTextLines(result),
     taskSummary: getTaskPhaseSummary(result.packageKey),
   };
 }
@@ -1732,10 +1806,13 @@ ${toContractList(optionLines)}
 5. 비용 제안
 - 기본 PM비: ${formatWon(result.baseFee)}
 - 사업비 연동 보수: ${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})
-- 옵션·가산: ${formatWon(result.optionFee)}
-- 공급가: ${formatWon(result.subtotal)}
+- 옵션·가산(성과보수 제외): ${formatWon(result.optionFee)}
+- 공급가(성과보수 제외): ${formatWon(result.subtotal)}
 - VAT: ${formatWon(context.vat)}
-- 총 제안금액: ${formatWon(context.total)}
+- 총 제안금액(성과보수 제외): ${formatWon(context.total)}
+- 조건부 성과보수 옵션(총액 별도): ${formatWon(result.successFee)}
+- 성과보수 옵션 기준
+${toContractList(context.successLines)}
 - 포함 사업비 기준: ${context.includedCostLines.length ? context.includedCostLines.join(", ") : "미입력"}
 - 제외 또는 별도 참고 사업비: ${context.excludedCostLines.length ? context.excludedCostLines.join(", ") : "해당 없음"}
 
@@ -1764,7 +1841,8 @@ function buildProposalDraftHtml(card, result) {
     ["추천 패키지", `${result.selectedPackage.label} / ${result.selectedPackage.description}`],
     ["관리대상 사업비", formatWon(result.managedCost)],
     ["예정 용역기간", `${result.months}개월`],
-    ["총 제안금액", formatWon(context.total)],
+    ["총 제안금액", `${formatWon(context.total)} (성과보수 제외)`],
+    ["성과보수 옵션", `${formatWon(result.successFee)} (총액 별도)`],
     ["사업비 대비 환산 요율", context.totalRate],
     ["결제 방식", `${context.paymentTerms.title} / ${context.paymentTerms.summary}`],
   ];
@@ -1781,7 +1859,7 @@ function buildProposalDraftHtml(card, result) {
           <div><dt>문서번호</dt><dd>${escapeHtml(buildDocumentNumber("PRO"))}</dd></div>
           <div><dt>작성일</dt><dd>${escapeHtml(formatDocumentDate())}</dd></div>
           <div><dt>프로젝트</dt><dd>${escapeHtml(context.projectName)}</dd></div>
-          <div><dt>제안금액</dt><dd>${escapeHtml(formatWon(context.total))}</dd></div>
+          <div><dt>제안금액</dt><dd>${escapeHtml(formatWon(context.total))} <small>성과보수 제외</small></dd></div>
         </dl>
       </header>
 
@@ -1791,9 +1869,9 @@ function buildProposalDraftHtml(card, result) {
           <div><span>추천 패키지</span><strong>${escapeHtml(result.selectedPackage.label)}</strong></div>
           <div><span>관리대상 사업비</span><strong>${escapeHtml(formatWon(result.managedCost))}</strong></div>
           <div><span>예정 기간</span><strong>${result.months}개월</strong></div>
-          <div><span>공급가</span><strong>${escapeHtml(formatWon(result.subtotal))}</strong></div>
+          <div><span>공급가</span><strong>${escapeHtml(formatWon(result.subtotal))}</strong><small>성과보수 제외</small></div>
           <div><span>VAT</span><strong>${escapeHtml(formatWon(context.vat))}</strong></div>
-          <div class="proposal-grand-total"><span>총 제안금액</span><strong>${escapeHtml(formatWon(context.total))}</strong></div>
+          <div class="proposal-grand-total"><span>총 제안금액</span><strong>${escapeHtml(formatWon(context.total))}</strong><small>성과보수 제외</small></div>
         </div>
         ${renderDocumentTable(summaryRows)}
       </section>
@@ -1832,10 +1910,12 @@ function buildProposalDraftHtml(card, result) {
         ${renderDocumentTable([
           ["기본 PM비", formatWon(result.baseFee)],
           ["사업비 연동 보수", `${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})`],
-          ["옵션·가산", formatWon(result.optionFee)],
-          ["공급가", formatWon(result.subtotal)],
+          ["옵션·가산", `${formatWon(result.optionFee)} (성과보수 제외)`],
+          ["공급가", `${formatWon(result.subtotal)} (성과보수 제외)`],
           ["VAT", formatWon(context.vat)],
-          ["총 제안금액", formatWon(context.total)],
+          ["총 제안금액", `${formatWon(context.total)} (성과보수 제외)`],
+          ["조건부 성과보수 옵션", `${formatWon(result.successFee)} (총액 별도)`],
+          ["성과보수 옵션 기준", { html: renderCompactBullets(context.successLines) }],
           ["사업비 대비 환산 요율", context.totalRate],
         ])}
       </section>
@@ -1954,7 +2034,8 @@ function buildScopeAttachmentHtml(card, result) {
           ["예정 용역기간", `${result.months}개월`],
           ["기본 PM비", formatWon(result.baseFee)],
           ["사업비 연동 보수", `${formatWon(result.linkedFee)} (${formatPercent(result.linkedRate)})`],
-          ["옵션·가산 금액", formatWon(result.optionFee)],
+          ["옵션·가산 금액", `${formatWon(result.optionFee)} (성과보수 제외)`],
+          ["성과보수 옵션", `${formatWon(result.successFee)} (총액 별도)`],
           ["포함 사업비", { html: renderLegalChips(includedCostLines, "미입력") }],
           ["제외 또는 별도 참고", { html: renderLegalChips(excludedCostLines) }],
         ])}
@@ -2057,9 +2138,7 @@ function buildEstimateDraft(card, result) {
   const projectName = card.querySelector(".project-name").value || "프로젝트";
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
-  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  const total = result.subtotal + vat;
-  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
+  const pricing = getPricingSummary(result);
   const baseRows = result.baseBreakdown.map(
     (row) => `- ${row.phase}: ${formatWon(row.amount)} (${row.taskCount}개 업무, ${formatPercent(row.share)})`,
   );
@@ -2099,29 +2178,32 @@ ${toContractList(baseRows)}
 ${toContractList([...includedOptions, ...paidOptions])}
 
 6. 가산·조정 항목
-- 성과보수: ${formatWon(result.successFee)}
 - 실비: ${formatWon(result.expenseFee)}
 - 직접 조정: ${formatWon(result.manualAdjustment)}
 
-7. 최종 견적금액
+7. 성과보수 옵션 산정내역
+- 성과보수 옵션은 총 견적금액에 포함하지 않는 조건부 별도 금액입니다.
+${toContractList(getSuccessFeeTextLines(result))}
+
+8. 최종 견적금액
 - 기본 PM비: ${formatWon(result.baseFee)}
 - 사업비 연동 보수: ${formatWon(result.linkedFee)}
-- 옵션·가산·조정: ${formatWon(result.optionFee)}
-- 공급가액 합계: ${formatWon(result.subtotal)}
-- VAT: ${formatWon(vat)}
-- 총 견적금액: ${formatWon(total)}
-- 관리대상 사업비 대비 환산 요율: ${totalRate}
+- 옵션·가산·조정(성과보수 제외): ${formatWon(result.optionFee)}
+- 공급가액 합계(성과보수 제외): ${formatWon(result.subtotal)}
+- VAT: ${formatWon(pricing.vat)}
+- 총 견적금액(성과보수 제외): ${formatWon(pricing.total)}
+- 관리대상 사업비 대비 환산 요율: ${pricing.convertedRateText}
 
-8. 비용 결제 조건
+9. 비용 결제 조건
 ${toContractList(paymentLines)}
 
-9. 견적 조건
+10. 견적 조건
 - 본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.
 - 관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.
 - 실비와 외부 전문가 비용은 사전 승인 범위에서 별도 정산합니다.
 - 본 견적서는 계약 체결 전 검토용 산출내역이며, 최종 계약 시 계약서 및 별첨 산출내역서로 확정합니다.
 
-10. 공급자 정보
+11. 공급자 정보
 ${toContractList(getCompanyInfoTextLines())}`;
 }
 
@@ -2129,9 +2211,7 @@ function buildEstimateDraftHtml(card, result) {
   const projectName = card.querySelector(".project-name").value || "프로젝트";
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
-  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  const total = result.subtotal + vat;
-  const totalRate = result.managedCost > 0 ? formatPercent(total / result.managedCost) : "-";
+  const pricing = getPricingSummary(result);
   const includedOptionRows = result.includedOptionItems.map((option) => ({
     label: option.label,
     note: option.description,
@@ -2149,7 +2229,6 @@ function buildEstimateDraftHtml(card, result) {
     };
   });
   const adjustmentRows = [
-    { label: "성과보수", amount: formatWon(result.successFee), basis: "성과 조건 별도 합의", note: "성과보수 입력값" },
     { label: "실비", amount: formatWon(result.expenseFee), basis: "사전 승인 실비", note: "실비 입력값" },
     { label: "직접 조정", amount: formatWon(result.manualAdjustment), basis: "사용자 직접 조정", note: "직접 조정 입력값" },
   ];
@@ -2182,7 +2261,7 @@ function buildEstimateDraftHtml(card, result) {
           ["관리대상 사업비", formatWon(result.managedCost)],
           ["사업비 구간", result.bracket.label],
           ["사업비 연동 요율", formatPercent(result.linkedRate)],
-          ["관리대상 사업비 대비 환산 요율", totalRate],
+          ["관리대상 사업비 대비 환산 요율", pricing.convertedRateText],
         ])}
       </section>
 
@@ -2242,24 +2321,30 @@ function buildEstimateDraftHtml(card, result) {
       </section>
 
       <section class="legal-section">
-        <h3>6. 최종 견적금액</h3>
+        <h3>6. 성과보수 옵션 산정내역</h3>
+        <p class="legal-cell-note">성과보수 옵션은 총 견적금액에 포함하지 않는 조건부 별도 금액입니다.</p>
+        ${renderSuccessFeeTable(result)}
+      </section>
+
+      <section class="legal-section">
+        <h3>7. 최종 견적금액</h3>
         <div class="estimate-total-grid">
           <div><span>기본 PM비</span><strong>${formatWon(result.baseFee)}</strong></div>
           <div><span>사업비 연동 보수</span><strong>${formatWon(result.linkedFee)}</strong></div>
-          <div><span>옵션·가산·조정</span><strong>${formatWon(result.optionFee)}</strong></div>
-          <div><span>공급가액</span><strong>${formatWon(result.subtotal)}</strong></div>
-          <div><span>VAT</span><strong>${formatWon(vat)}</strong></div>
-          <div class="estimate-grand-total"><span>총 견적금액</span><strong>${formatWon(total)}</strong></div>
+          <div><span>옵션·가산·조정</span><strong>${formatWon(result.optionFee)}</strong><small>성과보수 제외</small></div>
+          <div><span>공급가액</span><strong>${formatWon(result.subtotal)}</strong><small>성과보수 제외</small></div>
+          <div><span>VAT</span><strong>${formatWon(pricing.vat)}</strong></div>
+          <div class="estimate-grand-total"><span>총 견적금액</span><strong>${formatWon(pricing.total)}</strong><small>성과보수 제외</small></div>
         </div>
       </section>
 
       <section class="legal-section legal-note-box">
-        <h3>7. 비용 결제 조건</h3>
+        <h3>8. 비용 결제 조건</h3>
         ${renderPaymentTableHtml(card, result)}
       </section>
 
       <section class="legal-section legal-note-box">
-        <h3>8. 견적 조건</h3>
+        <h3>9. 견적 조건</h3>
         ${renderDocumentBullets([
           "본 견적은 현재 입력된 사업비, 기간, 패키지, 옵션 선택값을 기준으로 작성되었습니다.",
           "관리대상 사업비, 용역기간, 현장 방문 빈도, 업무범위 또는 옵션 선택이 변경되는 경우 재산정할 수 있습니다.",
@@ -2268,7 +2353,7 @@ function buildEstimateDraftHtml(card, result) {
         ])}
       </section>
       <section class="legal-section">
-        <h3>9. 공급자 정보</h3>
+        <h3>10. 공급자 정보</h3>
         ${renderDocumentTable(getCompanyInfoRows())}
       </section>
     </article>
@@ -2285,8 +2370,7 @@ function buildContractDraft(card, result) {
   const taskItems = getVisibleTaskTitles(result.packageKey);
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
-  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  const total = result.subtotal + vat;
+  const pricing = getPricingSummary(result);
   const paymentLines = getPaymentTextLines(card, result);
 
   return `PM(Project Management) 용역계약서 초안
@@ -2309,7 +2393,7 @@ function buildContractDraft(card, result) {
 13. 제외 또는 별도 참고 사업비: ${excludedCostLines.length ? excludedCostLines.join(", ") : "해당 없음"}
 14. 선택 패키지: ${result.selectedPackage.label}
 15. 예정 용역기간: 계약 체결일로부터 ${result.months}개월
-16. 계약금액: 공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}
+16. 계약금액: 공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(pricing.vat)} = 총 ${formatWon(pricing.total)} (성과보수 제외)
 17. 계약일:
 
 제1조 [목적]
@@ -2366,11 +2450,12 @@ ${toContractList(paidOptions)}
 제11조 [용역비 및 산출내역]
 1. 기본 PM비: ${formatWon(result.baseFee)}
 2. 사업비 연동 관리보수: ${formatWon(result.linkedFee)} (적용 요율 ${formatPercent(result.linkedRate)})
-3. 추가 선택 업무 및 가산금: ${formatWon(result.optionFee)}
-4. 공급가액 합계: ${formatWon(result.subtotal)}
-5. 부가가치세: ${formatWon(vat)}
-6. 총 계약 예정금액: ${formatWon(total)}
-7. 위 금액은 현재 입력된 관리대상 사업비, 선택 패키지, 선택 옵션, 예정 용역기간을 기준으로 산정한 금액이며, 실제 계약 체결 시 산출내역서를 별첨한다.
+3. 추가 선택 업무 및 가산금(성과보수 제외): ${formatWon(result.optionFee)}
+4. 조건부 성과보수 옵션(총 계약 예정금액 미포함): ${formatWon(result.successFee)}
+5. 공급가액 합계(성과보수 제외): ${formatWon(result.subtotal)}
+6. 부가가치세: ${formatWon(pricing.vat)}
+7. 총 계약 예정금액(성과보수 제외): ${formatWon(pricing.total)}
+8. 위 금액은 현재 입력된 관리대상 사업비, 선택 패키지, 선택 옵션, 예정 용역기간을 기준으로 산정한 금액이며, 실제 계약 체결 시 산출내역서를 별첨한다.
 
 제12조 [지급 방법]
 1. 갑은 용역비를 본 계약서에 선택된 아래 지급 조건에 따라 지급한다.
@@ -2395,9 +2480,7 @@ ${paymentLines.length + 2}. 갑이 지급기일을 지체하는 경우 을은 �
 3. 을의 검토 의견은 갑의 의사결정을 돕기 위한 참고자료이며, 최종 계약 체결, 비용 지급, 설계변경 승인, 시공사 선정, 임대·매각 조건 확정은 갑의 책임으로 한다.
 
 제16조 [성과보수 및 특수 업무]
-1. VE 절감액, PF 실행, 임대 성사, 매각 성과 등 성과보수는 본 계약에 포함하지 않으며 별도 특약으로 정한다.
-2. VE 성과보수를 정하는 경우, 갑이 승인하고 설계자·시공사가 적용 가능하다고 확인한 대안 중 품질·안전·법규 저하 없이 최종 계약 또는 정산에 반영된 절감액을 기준으로 한다.
-3. PF, 임대, 매각 관련 업무는 자료 작성, 일정관리, 조건검토, 외부 전문가 또는 중개사 협업관리 범위로 한정하며 직접 알선 또는 중개행위로 해석하지 않는다.
+${getSuccessContractArticleLines(result).map((line, index) => `${index + 1}. ${line}`).join("\n")}
 
 제17조 [자료 및 지식재산]
 1. 갑이 제공한 도면, 견적서, 계약서, 사업자료의 소유권은 갑 또는 해당 권리자에게 있다.
@@ -2437,10 +2520,11 @@ ${toContractList(paidOptions)}
 별첨 4. 산출내역
 - 기본 PM비: ${formatWon(result.baseFee)}
 - 사업비 연동 관리보수: ${formatWon(result.linkedFee)}
-- 추가 선택 업무 및 가산금: ${formatWon(result.optionFee)}
-- 공급가액: ${formatWon(result.subtotal)}
-- VAT: ${formatWon(vat)}
-- 총액: ${formatWon(total)}
+- 추가 선택 업무 및 가산금(성과보수 제외): ${formatWon(result.optionFee)}
+- 조건부 성과보수 옵션(총액 별도): ${formatWon(result.successFee)}
+- 공급가액(성과보수 제외): ${formatWon(result.subtotal)}
+- VAT: ${formatWon(pricing.vat)}
+- 총액(성과보수 제외): ${formatWon(pricing.total)}
 
 위 계약의 성립을 증명하기 위하여 계약서 2부를 작성하고 갑과 을이 서명 또는 날인한 후 각 1부씩 보관한다.
 
@@ -2470,8 +2554,7 @@ function buildContractDraftHtml(card, result) {
   const taskItems = getTaskPhaseSummary(result.packageKey);
   const includedCostLines = getCostBreakdownLines(card, "included");
   const excludedCostLines = getCostBreakdownLines(card, "excluded");
-  const vat = elements.includeVat.checked ? result.subtotal * VAT_RATE : 0;
-  const total = result.subtotal + vat;
+  const pricing = getPricingSummary(result);
   const paymentLines = getPaymentTextLines(card, result).map((line) => line.replace(/^- /, ""));
   const articles = [
     ["제1조 [목적]", ["본 계약은 갑의 건축사업 수행을 위하여 을이 사업관리, 일정관리, 비용관리, 품질관리, 커뮤니케이션 관리 및 의사결정 지원 업무를 수행하는 데 필요한 권리·의무, 업무범위, 대가, 책임범위를 정함을 목적으로 한다."]],
@@ -2484,12 +2567,12 @@ function buildContractDraftHtml(card, result) {
     ["제8조 [업무 결과물 및 보고]", ["을은 업무 수행 과정에서 필요한 경우 회의록, 이슈리스트, 일정표, 견적 비교표, 변경관리표, 기성검토 의견, 준공점검표, 정산검토 의견 등 업무 성격에 맞는 결과물을 제공한다.", "결과물의 형식은 문서, 표, 이메일, 회의록, 온라인 공유문서 등 프로젝트 운영에 적합한 방식으로 한다.", "을의 검토 의견은 갑의 의사결정을 돕기 위한 관리 의견이며, 법정 설계·감리·시공·전문기술 검토를 대체하지 않는다."]],
     ["제9조 [갑의 의무]", ["갑은 을의 업무 수행에 필요한 사업 목적, 예산, 일정, 설계도서, 견적서, 계약서, 인허가 자료, 시공사 제출자료 등 관련 자료를 적시에 제공한다.", "갑은 을의 검토 의견을 참고하여 최종 의사결정을 하며, 발주자 고유의 의사결정 책임은 갑에게 있다.", "자료 제공 지연, 의사결정 지연 또는 자료 미제공으로 인한 일정 지연은 을의 귀책으로 보지 않는다."]],
     ["제10조 [을의 의무]", ["을은 계약 범위 내 업무를 선량한 관리자의 주의로 성실히 수행한다.", "을은 프로젝트의 주요 이슈, 일정 지연 가능성, 비용 증가 가능성, 의사결정 필요사항을 갑에게 보고한다.", "을은 갑의 승인 없이 갑을 대리하여 설계계약, 공사계약, 금융계약, 임대차계약, 매매계약을 체결하거나 금전 지급을 확정하지 않는다."]],
-    ["제11조 [용역비 및 산출내역]", [`기본 PM비: ${formatWon(result.baseFee)}`, `사업비 연동 관리보수: ${formatWon(result.linkedFee)} (적용 요율 ${formatPercent(result.linkedRate)})`, `추가 선택 업무 및 가산금: ${formatWon(result.optionFee)}`, `공급가액 합계: ${formatWon(result.subtotal)}`, `부가가치세: ${formatWon(vat)}`, `총 계약 예정금액: ${formatWon(total)}`]],
+    ["제11조 [용역비 및 산출내역]", [`기본 PM비: ${formatWon(result.baseFee)}`, `사업비 연동 관리보수: ${formatWon(result.linkedFee)} (적용 요율 ${formatPercent(result.linkedRate)})`, `추가 선택 업무 및 가산금(성과보수 제외): ${formatWon(result.optionFee)}`, `조건부 성과보수 옵션(총 계약 예정금액 미포함): ${formatWon(result.successFee)}`, `공급가액 합계(성과보수 제외): ${formatWon(result.subtotal)}`, `부가가치세: ${formatWon(pricing.vat)}`, `총 계약 예정금액(성과보수 제외): ${formatWon(pricing.total)}`]],
     ["제12조 [지급 방법]", ["갑은 용역비를 본 계약서에 선택된 지급 조건에 따라 지급한다.", ...paymentLines, "갑이 지급기일을 지체하는 경우 을은 상당한 기간을 정하여 이행을 최고할 수 있으며, 지체가 계속될 때에는 업무를 일시 중지할 수 있다."]],
     ["제13조 [실비 및 외부비용]", ["교통비, 지방 출장비, 도면 출력비, 등본·인허가 서류 발급비, 외부 전문가 검토비 등 실비는 별도 정산한다.", "변호사, 세무사, 공인중개사, 구조·전기·소방 등 전문기술자, 감정평가사 등 외부 전문가 비용은 갑이 직접 계약하거나 사전 승인한 범위에서 별도 부담한다."]],
     ["제14조 [업무 변경 및 추가 업무]", ["프로젝트 규모, 용도, 연면적, 예산, 일정, 설계범위가 변경되는 경우 을은 용역기간 또는 용역비 조정을 요청할 수 있다.", "갑의 요청으로 회의, 현장방문, 보고서, 견적비교, 계약검토, 대외협의 횟수가 현저히 증가하는 경우 추가 업무로 본다.", "추가 업무는 갑과 을이 업무범위, 기간, 금액을 서면 또는 전자문서로 합의한 후 수행한다."]],
     ["제15조 [업무 제외 및 책임 제한]", ["본 용역은 건축주를 위한 사업관리 및 의사결정 지원 업무이며, 건축사법상 설계업무, 법정 감리업무, 건설업자의 시공업무, 법률대리, 세무자문, 금융상품 알선, 부동산 중개행위를 대체하지 않는다.", "을의 검토 의견은 갑의 의사결정을 돕기 위한 참고자료이며, 최종 계약 체결, 비용 지급, 설계변경 승인, 시공사 선정, 임대·매각 조건 확정은 갑의 책임으로 한다."]],
-    ["제16조 [성과보수 및 특수 업무]", ["VE 절감액, PF 실행, 임대 성사, 매각 성과 등 성과보수는 본 계약에 포함하지 않으며 별도 특약으로 정한다.", "PF, 임대, 매각 관련 업무는 자료 작성, 일정관리, 조건검토, 외부 전문가 또는 중개사 협업관리 범위로 제한되며 직접 알선 또는 중개행위로 해석하지 않는다."]],
+    ["제16조 [성과보수 및 특수 업무]", getSuccessContractArticleLines(result)],
     ["제17조 [자료 및 지식재산권]", ["갑이 제공한 도면, 견적서, 계약서, 사업자료의 소유권은 갑 또는 해당 권리자에게 있다.", "을이 작성한 회의록, 검토표, 관리표, 보고자료 등 결과물은 본 프로젝트 목적 범위에서 갑이 사용할 수 있다."]],
     ["제18조 [비밀유지]", ["갑과 을은 본 계약 수행 과정에서 알게 된 상대방의 영업상·기술상·재무상 정보 및 프로젝트 자료를 상대방의 사전 동의 없이 제3자에게 누설하거나 계약 목적 외로 사용하지 않는다."]],
     ["제19조 [계약기간, 중지 및 해지]", ["본 계약기간은 계약 체결일부터 예정 용역기간 종료일까지로 한다. 다만 사용승인, 정산, 하자보증 인수 등 마무리 업무가 남은 경우 갑과 을은 필요한 범위에서 기간을 연장할 수 있다.", "갑 또는 을이 본 계약상 의무를 중대하게 위반하고 상대방이 상당한 기간을 정하여 시정을 요구하였음에도 시정하지 않는 경우 상대방은 계약을 해지할 수 있다.", "계약이 중도 해지되는 경우 갑은 해지 시점까지 수행된 업무와 이미 발생한 실비, 외부비용, 착수된 옵션 업무비를 정산하여 지급한다."]],
@@ -2523,7 +2606,7 @@ function buildContractDraftHtml(card, result) {
           ["제외 또는 별도 참고 사업비", { html: renderLegalChips(excludedCostLines) }],
           ["선택 패키지", result.selectedPackage.label],
           ["예정 용역기간", `계약 체결일로부터 ${result.months}개월`],
-          ["계약금액", `공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(vat)} = 총 ${formatWon(total)}`],
+          ["계약금액", `공급가 ${formatWon(result.subtotal)} + VAT ${formatWon(pricing.vat)} = 총 ${formatWon(pricing.total)} (성과보수 제외)`],
           ["계약일", ""],
         ])}
       </section>
@@ -2659,6 +2742,110 @@ function syncOptionCards(card) {
       status.dataset.status = "optional";
     }
   });
+}
+
+function calculateSuccessRuleCard(ruleCard) {
+  const rule = successRules.find((item) => item.id === ruleCard.dataset.successType);
+  if (!rule) return null;
+  const condition = ruleCard.querySelector(".success-condition")?.value?.trim() || rule.condition;
+  const paymentTiming = ruleCard.querySelector(".success-payment-timing")?.value?.trim() || rule.paymentTiming;
+
+  if (rule.direct) {
+    const amount = readNumber(ruleCard.querySelector(".success-direct-amount"));
+    const reason = ruleCard.querySelector(".success-direct-reason")?.value?.trim() || "직접 입력 성과보수";
+    return {
+      type: rule.id,
+      label: rule.label,
+      basisLabel: reason,
+      basisAmount: amount,
+      rate: null,
+      cap: 0,
+      amount,
+      condition,
+      paymentTiming,
+      caution: rule.caution,
+      special: Boolean(rule.special),
+      direct: true,
+    };
+  }
+
+  const basisAmount = readNumber(ruleCard.querySelector(".success-basis"));
+  const rate = Math.max(0, readNumber(ruleCard.querySelector(".success-rate")));
+  const cap = readNumber(ruleCard.querySelector(".success-cap"));
+  const rawAmount = basisAmount * (rate / 100);
+  const amount = cap > 0 ? Math.min(rawAmount, cap) : rawAmount;
+
+  return {
+    type: rule.id,
+    label: rule.label,
+    basisLabel: rule.basisLabel,
+    basisAmount,
+    rate,
+    cap,
+    amount,
+    condition,
+    paymentTiming,
+    caution: rule.caution,
+    special: Boolean(rule.special),
+    direct: false,
+  };
+}
+
+function calculateSuccessFee(card) {
+  const items = [...card.querySelectorAll(".success-rule-card")]
+    .filter((ruleCard) => ruleCard.querySelector(".success-rule-check")?.checked)
+    .map(calculateSuccessRuleCard)
+    .filter(Boolean)
+    .filter((item) => item.amount > 0);
+
+  return {
+    fee: items.reduce((sum, item) => sum + item.amount, 0),
+    items,
+  };
+}
+
+function syncSuccessRuleCards(card, successItems = null) {
+  const selectedItems = successItems ?? calculateSuccessFee(card).items;
+  const selectedMap = new Map(selectedItems.map((item) => [item.type, item]));
+  const total = selectedItems.reduce((sum, item) => sum + item.amount, 0);
+
+  card.querySelectorAll(".success-rule-card").forEach((ruleCard) => {
+    const rule = successRules.find((item) => item.id === ruleCard.dataset.successType);
+    const checkbox = ruleCard.querySelector(".success-rule-check");
+    const checked = Boolean(checkbox?.checked);
+    const preview = calculateSuccessRuleCard(ruleCard);
+    const item = selectedMap.get(ruleCard.dataset.successType) || preview;
+
+    ruleCard.classList.toggle("is-selected", checked);
+    ruleCard.setAttribute("aria-pressed", String(checked));
+
+    ruleCard.querySelectorAll(".success-money").forEach((input) => {
+      const readable = input.closest("label")?.querySelector(".success-money-readable");
+      if (readable) readable.textContent = formatWon(readNumber(input));
+    });
+
+    const amount = checked ? item?.amount || 0 : preview?.amount || 0;
+    const amountLabel = checked ? "반영 성과보수" : "선택 시 예상액";
+    const amountNode = ruleCard.querySelector(".success-rule-amount");
+    if (amountNode) amountNode.textContent = formatWon(amount);
+    const amountLabelNode = ruleCard.querySelector(".success-rule-amount-label");
+    if (amountLabelNode) amountLabelNode.textContent = amountLabel;
+
+    const formulaNode = ruleCard.querySelector(".success-rule-formula");
+    if (!formulaNode || !rule || !preview) return;
+    if (rule.direct) {
+      const reason = ruleCard.querySelector(".success-direct-reason")?.value?.trim() || "직접 입력 성과보수";
+      formulaNode.textContent = `${reason} · ${formatWon(preview.amount)}`;
+    } else {
+      const capText = preview.cap > 0 ? `, 상한 ${formatWon(preview.cap)}` : "";
+      formulaNode.textContent = `${formatWon(preview.basisAmount)} × ${preview.rate}%${capText}`;
+    }
+  });
+
+  const totalNode = card.querySelector(".success-fee-total");
+  if (totalNode) totalNode.textContent = formatWon(total);
+  const resultNode = card.querySelector(".success-fee-result");
+  if (resultNode) resultNode.textContent = formatWon(total);
 }
 
 function syncPmTasks(card) {
@@ -2823,6 +3010,90 @@ function populateOptionGrid(grid) {
   });
 }
 
+function populateSuccessRuleCards(grid) {
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  successRules.forEach((rule) => {
+    const card = document.createElement("article");
+    card.className = `success-rule-card${rule.special ? " is-special" : ""}`;
+    card.dataset.successType = rule.id;
+    const badges = rule.badges?.length
+      ? `<div class="success-rule-badges">${rule.badges.map((badge) => `<span>${escapeHtml(badge)}</span>`).join("")}</div>`
+      : "";
+    const controls = rule.direct
+      ? `
+        <label>
+          <span>성과보수 금액</span>
+          <div class="money-input">
+            <input class="success-money success-direct-amount" type="text" inputmode="numeric" data-step="1000000" />
+            <em>원</em>
+          </div>
+          <small class="success-money-readable">0원</small>
+        </label>
+        <label>
+          <span>산정 사유</span>
+          <input class="success-direct-reason" type="text" value="직접 입력 성과보수" />
+        </label>
+      `
+      : `
+        <label>
+          <span>기준금액</span>
+          <div class="money-input">
+            <input class="success-money success-basis" type="text" inputmode="numeric" data-step="1000000" />
+            <em>원</em>
+          </div>
+          <small class="success-money-readable">0원</small>
+        </label>
+        <label>
+          <span>보수율</span>
+          <div class="unit-input">
+            <input class="success-rate" type="number" min="0" max="100" step="0.1" value="${rule.rate}" />
+            <em>%</em>
+          </div>
+        </label>
+        <label>
+          <span>상한액</span>
+          <div class="money-input">
+            <input class="success-money success-cap" type="text" inputmode="numeric" value="${rule.cap.toLocaleString("ko-KR")}" data-step="1000000" />
+            <em>원</em>
+          </div>
+          <small class="success-money-readable">${formatWon(rule.cap)}</small>
+        </label>
+      `;
+
+    card.innerHTML = `
+      <label class="success-rule-toggle">
+        <input class="success-rule-check" type="checkbox" value="${rule.id}" />
+        <span>
+          <strong>${escapeHtml(rule.label)}</strong>
+          <small>${escapeHtml(rule.description)}</small>
+        </span>
+      </label>
+      ${badges}
+      <div class="success-rule-controls">
+        ${controls}
+        <label>
+          <span>성과 판정 조건</span>
+          <input class="success-condition" type="text" value="${escapeHtml(rule.condition)}" />
+        </label>
+        <label>
+          <span>지급 시점</span>
+          <input class="success-payment-timing" type="text" value="${escapeHtml(rule.paymentTiming)}" />
+        </label>
+      </div>
+      <div class="success-rule-result">
+        <span class="success-rule-amount-label">선택 시 예상액</span>
+        <strong class="success-rule-amount">0원</strong>
+        <small class="success-rule-formula">0원</small>
+      </div>
+      ${rule.caution ? `<p class="success-rule-caution">${escapeHtml(rule.caution)}</p>` : ""}
+    `;
+
+    grid.append(card);
+  });
+}
+
 function applyPackageDefaults(card, packageKey, options = {}) {
   const { resetCost = true, resetDuration = true } = options;
   const selectedPackage = packages[packageKey];
@@ -2943,11 +3214,13 @@ function createProject(initialPackage = "standard") {
   const packageCardGrid = fragment.querySelector(".package-card-grid");
   const pmTaskGrid = fragment.querySelector(".pm-task-grid");
   const optionGrid = fragment.querySelector(".option-grid");
+  const successRuleGrid = fragment.querySelector(".success-rule-grid");
   const paymentBlock = fragment.querySelector(".payment-block");
 
   populatePackageSelect(packageSelect);
   populatePackageCards(packageCardGrid, packageSelect, card);
   populateOptionGrid(optionGrid);
+  populateSuccessRuleCards(successRuleGrid);
 
   packageSelect.value = initialPackage;
   applyPackageDefaults(fragment, initialPackage);
@@ -3095,6 +3368,7 @@ function createProject(initialPackage = "standard") {
   fragment.querySelectorAll("input, select").forEach((input) => {
     input.addEventListener("input", () => {
       if (input.classList.contains("cost-component")) formatAmountInput(input);
+      if (input.classList.contains("success-money")) formatAmountInput(input);
       if (input.classList.contains("option-check")) syncOptionCards(card);
       updateCard(card);
       refreshDocumentOutput(card);
@@ -3102,6 +3376,7 @@ function createProject(initialPackage = "standard") {
     });
     input.addEventListener("change", () => {
       if (input.classList.contains("cost-component")) formatAmountInput(input);
+      if (input.classList.contains("success-money")) formatAmountInput(input);
       if (input.classList.contains("option-check")) syncOptionCards(card);
       updateCard(card);
       refreshDocumentOutput(card);

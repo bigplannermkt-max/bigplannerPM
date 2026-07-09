@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>빅플래너 PM 수수료 산정</title>
-    <link rel="stylesheet" href="./styles.css?v=print-document-only-20260702" />
+    <link rel="stylesheet" href="./styles.css?v=loopy-redesign-20260709" />
   </head>
   <body>
     <main class="app">
@@ -45,6 +45,7 @@
           <span id="stickyDuration">기간: -</span>
           <span id="stickyManagedCost">관리대상 사업비: 0원</span>
           <span id="stickyPaymentMethod">결제: A안</span>
+          <span id="stickySuccessOption">성과보수 옵션: 0원(총액 별도)</span>
           <span id="stickyVatState">VAT 포함</span>
         </div>
       </section>
@@ -365,16 +366,17 @@
         <div class="result-block flow-section">
           <div class="option-block__head">
             <strong><span class="step-marker">05</span> 산정결과</strong>
-            <span>성과보수, 실비, 직접 조정까지 반영한 최종 제안금액</span>
+            <span>성과보수는 총액에서 제외하고 조건부 별도 옵션으로 표기합니다.</span>
           </div>
+          <section class="success-fee-block">
+            <div class="scope-subhead">
+              <strong>성과보수 옵션 설정</strong>
+              <span>성과 유형과 산정 기준을 선택하면 총액 별도 옵션 금액으로 표시됩니다.</span>
+              <b class="success-fee-total">0원</b>
+            </div>
+            <div class="success-rule-grid"></div>
+          </section>
           <div class="adjustment-grid">
-            <label>
-              <span>성과보수</span>
-              <div class="money-input">
-                <input class="success-fee" type="number" min="0" step="1000000" value="0" />
-                <em>원</em>
-              </div>
-            </label>
             <label>
               <span>실비</span>
               <div class="money-input">
@@ -402,6 +404,10 @@
             <div>
               <span>옵션·가산</span>
               <strong class="option-fee">0원</strong>
+            </div>
+            <div>
+              <span>성과보수 옵션(총액 별도)</span>
+              <strong class="success-fee-result">0원</strong>
             </div>
             <div>
               <span>공급가</span>
@@ -440,7 +446,7 @@
               <input class="payment-method" type="radio" name="paymentMethod" value="monthly" />
               <span>
                 <strong>B안. 프로젝트 기간 월정액</strong>
-                <small>총 계약금액을 예정 용역기간 개월 수로 나누어 매월 균등 청구합니다.</small>
+                <small>성과보수 제외 총 계약금액을 예정 용역기간 개월 수로 나누어 매월 균등 청구합니다.</small>
               </span>
             </label>
           </div>
@@ -459,7 +465,7 @@
                 <div class="rate-slider-field">
                   <div class="rate-slider-field__value">
                     <strong data-payment-rate-display>30%</strong>
-                    <small data-payment-amount-display>총 제안금액 기준 0원</small>
+                    <small data-payment-amount-display>총 제안금액(성과보수 제외) 기준 0원</small>
                   </div>
                   <input class="payment-contract-rate payment-rate-value" type="hidden" value="30" />
                 </div>
@@ -469,7 +475,7 @@
                 <div class="rate-slider-field">
                   <div class="rate-slider-field__value">
                     <strong data-payment-rate-display>10%</strong>
-                    <small data-payment-amount-display>총 제안금액 기준 0원</small>
+                    <small data-payment-amount-display>총 제안금액(성과보수 제외) 기준 0원</small>
                   </div>
                   <input class="payment-final-rate payment-rate-value" type="hidden" value="10" />
                 </div>
@@ -507,7 +513,7 @@
                 </select>
               </label>
             </div>
-            <p>월정액은 VAT 포함 표시 여부에 따라 총 계약금액을 예정 용역기간으로 나누어 산정합니다.</p>
+            <p>월정액은 VAT 포함 표시 여부에 따라 성과보수 제외 총 계약금액을 예정 용역기간으로 나누어 산정합니다.</p>
           </div>
         </div>
 
@@ -551,6 +557,6 @@
       </article>
     </template>
 
-    <script src="./script.js?v=print-document-only-20260702"></script>
+    <script src="./script.js?v=loopy-redesign-20260709"></script>
   </body>
 </html>
