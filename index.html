@@ -119,10 +119,11 @@
             <span>핵심 조건만 선택하면 추천 패키지와 보강 옵션을 바로 확인합니다.</span>
           </div>
           <div class="diagnosis-progress" aria-label="진단 단계">
-            <span><b>1</b> 진행 단계</span>
-            <span><b>2</b> 관리 여건</span>
-            <span><b>3</b> 리스크</span>
-            <span><b>4</b> 현장 관여</span>
+            <span data-wizard-step="0"><b>1</b> 진행 단계</span>
+            <span data-wizard-step="1"><b>2</b> 관리 여건</span>
+            <span data-wizard-step="2"><b>3</b> 리스크</span>
+            <span data-wizard-step="3"><b>4</b> 현장 관여</span>
+            <span data-wizard-step="4"><b>5</b> 추천 확인</span>
           </div>
           <div class="diagnosis-grid">
             <div class="diagnosis-question-stack">
@@ -222,15 +223,24 @@
                   </button>
                 </div>
               </section>
+              <div class="diagnosis-wizard-actions">
+                <button class="ghost-button diagnosis-prev" type="button">이전</button>
+                <span class="diagnosis-step-status" aria-live="polite">1 / 4</span>
+                <button class="primary-button diagnosis-next" type="button">다음</button>
+              </div>
             </div>
             <aside class="diagnosis-result">
-              <span class="diagnosis-result__eyebrow">실시간 추천</span>
+              <span class="diagnosis-result__eyebrow">진단 완료</span>
               <strong class="diagnosis-package">추천 패키지: 일반 관리형</strong>
               <p class="diagnosis-reason">프로젝트 조건을 선택하면 추천 사유가 표시됩니다.</p>
               <div class="diagnosis-result__meta">
                 <span class="diagnosis-option-hint">추천 옵션은 패키지 적용 시 함께 표시됩니다.</span>
               </div>
-              <button class="primary-button apply-diagnosis" type="button">일반 관리형으로 설정</button>
+              <div class="diagnosis-final-actions">
+                <button class="primary-button apply-diagnosis" type="button">일반 관리형으로 설정</button>
+                <button class="ghost-button diagnosis-skip" type="button">직접 선택할게요</button>
+                <button class="ghost-button diagnosis-restart" type="button">처음부터 다시</button>
+              </div>
             </aside>
           </div>
         </div>

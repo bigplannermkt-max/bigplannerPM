@@ -2873,6 +2873,60 @@ function updateDiagnosis(card) {
   if (applyButton) applyButton.textContent = `${packageName}으로 설정`;
 }
 
+function getDiagnosisGroups(card) {
+  return [...card.querySelectorAll(".diagnosis-group")];
+}
+
+function getDiagnosisCurrentStep(card) {
+  const groups = getDiagnosisGroups(card);
+  const savedStep = Number.parseInt(card.dataset.diagnosisStep || "0", 10);
+  if (!Number.isInteger(savedStep)) return 0;
+  return Math.min(Math.max(savedStep, 0), groups.length);
+}
+
+function setDiagnosisStep(card, step) {
+  const groups = getDiagnosisGroups(card);
+  const nextStep = Math.min(Math.max(step, 0), groups.length);
+  const isFinal = nextStep === groups.length;
+  card.dataset.diagnosisStep = String(nextStep);
+  card.querySelector(".diagnosis-block")?.classList.toggle("is-final", isFinal);
+
+  groups.forEach((group, index) => {
+    const active = index === nextStep;
+    group.hidden = !active;
+    group.classList.toggle("is-active", active);
+  });
+
+  card.querySelectorAll("[data-wizard-step]").forEach((item) => {
+    const itemStep = Number.parseInt(item.dataset.wizardStep || "0", 10);
+    item.classList.toggle("is-active", itemStep === nextStep);
+    item.classList.toggle("is-complete", itemStep < nextStep);
+  });
+
+  const prevButton = card.querySelector(".diagnosis-prev");
+  const nextButton = card.querySelector(".diagnosis-next");
+  const status = card.querySelector(".diagnosis-step-status");
+  if (prevButton) prevButton.disabled = nextStep === 0;
+  if (nextButton) nextButton.textContent = nextStep === groups.length - 1 ? "추천 보기" : "다음";
+  if (status) status.textContent = isFinal ? "추천 확인" : `${nextStep + 1} / ${groups.length}`;
+}
+
+function restartDiagnosis(card) {
+  getDiagnosisGroups(card).forEach((group) => {
+    group.querySelectorAll(".diagnosis-choice").forEach((choice, index) => {
+      const selected = index === 0;
+      choice.classList.toggle("is-selected", selected);
+      choice.setAttribute("aria-pressed", String(selected));
+    });
+  });
+  updateDiagnosis(card);
+  setDiagnosisStep(card, 0);
+}
+
+function continueToPackagePicker(card) {
+  card.querySelector(".package-picker")?.scrollIntoView({ behavior: "auto", block: "start" });
+}
+
 function applyDiagnosis(card) {
   const packageKey = card.dataset.recommendedPackage || recommendPackage(card).packageKey;
   const recommendedOptions = JSON.parse(card.dataset.recommendedOptions || "[]");
@@ -2890,6 +2944,7 @@ function applyDiagnosis(card) {
   });
 
   updateCard(card);
+  continueToPackagePicker(card);
 }
 
 function renderBaseFeeBreakdown(card, result) {
@@ -3246,11 +3301,28 @@ function createProject(initialPackage = "standard") {
         choice.setAttribute("aria-pressed", String(selected));
       });
       updateDiagnosis(card);
+      card.querySelector(".diagnosis-next")?.focus();
     });
   });
 
   fragment.querySelector(".apply-diagnosis").addEventListener("click", () => {
     applyDiagnosis(card);
+  });
+
+  fragment.querySelector(".diagnosis-prev").addEventListener("click", () => {
+    setDiagnosisStep(card, getDiagnosisCurrentStep(card) - 1);
+  });
+
+  fragment.querySelector(".diagnosis-next").addEventListener("click", () => {
+    setDiagnosisStep(card, getDiagnosisCurrentStep(card) + 1);
+  });
+
+  fragment.querySelector(".diagnosis-restart").addEventListener("click", () => {
+    restartDiagnosis(card);
+  });
+
+  fragment.querySelector(".diagnosis-skip").addEventListener("click", () => {
+    continueToPackagePicker(card);
   });
 
   paymentBlock.addEventListener("input", (event) => {
@@ -3389,6 +3461,7 @@ function createProject(initialPackage = "standard") {
   syncPmTasks(card);
   syncOptionCards(card);
   updateDiagnosis(card);
+  setDiagnosisStep(card, 0);
   updateCard(card);
 }
 
