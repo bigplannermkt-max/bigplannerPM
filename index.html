@@ -118,10 +118,22 @@
             <strong><span class="step-marker">01</span> 프로젝트 진단</strong>
             <span>핵심 조건만 선택하면 추천 패키지와 보강 옵션을 바로 확인합니다.</span>
           </div>
+          <div class="diagnosis-progress" aria-label="진단 단계">
+            <span><b>1</b> 진행 단계</span>
+            <span><b>2</b> 관리 여건</span>
+            <span><b>3</b> 리스크</span>
+            <span><b>4</b> 현장 관여</span>
+          </div>
           <div class="diagnosis-grid">
             <div class="diagnosis-question-stack">
               <section class="diagnosis-group" data-diagnosis-group="stage">
-                <h3>현재 단계</h3>
+                <div class="diagnosis-step-head">
+                  <span class="diagnosis-step-number">1</span>
+                  <div>
+                    <h3>현재 단계</h3>
+                    <p>프로젝트가 어디까지 진행됐는지 먼저 고릅니다.</p>
+                  </div>
+                </div>
                 <div class="diagnosis-card-list">
                   <button class="diagnosis-choice is-selected" type="button" data-diagnosis="stage" data-value="planning">
                     <strong>기획 전/초기</strong>
@@ -142,7 +154,13 @@
                 </div>
               </section>
               <section class="diagnosis-group" data-diagnosis-group="experience">
-                <h3>발주자 관리 여건</h3>
+                <div class="diagnosis-step-head">
+                  <span class="diagnosis-step-number">2</span>
+                  <div>
+                    <h3>발주자 관리 여건</h3>
+                    <p>직접 챙길 수 있는 범위와 필요한 지원 강도를 정합니다.</p>
+                  </div>
+                </div>
                 <div class="diagnosis-card-list">
                   <button class="diagnosis-choice is-selected" type="button" data-diagnosis="experience" data-value="experienced">
                     <strong>직접 관리 가능</strong>
@@ -159,7 +177,13 @@
                 </div>
               </section>
               <section class="diagnosis-group" data-diagnosis-group="risk">
-                <h3>리스크 수준</h3>
+                <div class="diagnosis-step-head">
+                  <span class="diagnosis-step-number">3</span>
+                  <div>
+                    <h3>리스크 수준</h3>
+                    <p>예산, 일정, 인허가, 시공사 이슈 가능성을 반영합니다.</p>
+                  </div>
+                </div>
                 <div class="diagnosis-card-list">
                   <button class="diagnosis-choice is-selected" type="button" data-diagnosis="risk" data-value="low">
                     <strong>낮음</strong>
@@ -176,7 +200,13 @@
                 </div>
               </section>
               <section class="diagnosis-group" data-diagnosis-group="site">
-                <h3>외부 협의·현장 관여</h3>
+                <div class="diagnosis-step-head">
+                  <span class="diagnosis-step-number">4</span>
+                  <div>
+                    <h3>외부 협의·현장 관여</h3>
+                    <p>현장 확인, 금융기관, 민원 대응이 필요한지 선택합니다.</p>
+                  </div>
+                </div>
                 <div class="diagnosis-card-list">
                   <button class="diagnosis-choice is-selected" type="button" data-diagnosis="site" data-value="normal" data-finance-value="no" data-purpose-value="own">
                     <strong>일반 협의</strong>
