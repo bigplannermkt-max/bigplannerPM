@@ -1,7 +1,7 @@
 # Bigplanner PM Design System
 
 ## 1. Atmosphere / Signature
-Quiet operations console for construction PM estimates. The surface should feel precise, calm, and ready for repeated daily use: paper-white work areas, graphite text, field-green decisions, blue document actions, and amber warnings. Density is medium-high, with tables and controls treated as working surfaces instead of marketing cards.
+Quiet operations console for construction PM estimates. The surface should feel precise, calm, and ready for repeated daily use: paper-white work areas, graphite text, and one field-green accent for decisions, documents, and totals. Density is medium-high, with tables and controls treated as working surfaces instead of marketing cards.
 
 Design dials:
 - `DESIGN_VARIANCE`: 5
@@ -22,8 +22,6 @@ Design dials:
 - Primary: `#11684E`, `--bp-primary`, selected and primary action.
 - Primary strong: `#0A4938`, `--bp-primary-strong`, totals and dark primary surfaces.
 - Primary soft: `#E2F3EA`, `--bp-primary-soft`, selected backgrounds.
-- Accent blue: `#285F8F`, `--bp-blue`, documents and secondary action.
-- Accent amber: `#B27928`, `--bp-amber`, caution and reference marks.
 - Destructive: `#A6403A`, `--bp-danger`, destructive controls.
 - Ring: `#74B99A`, `--bp-ring`, focus outline.
 - On primary: `#FFFFFF`, `--bp-on-primary`, text on dark primary.
@@ -42,8 +40,6 @@ Dark mode tokens:
 - `--bp-primary`: `#65D09B`
 - `--bp-primary-strong`: `#9BE3BD`
 - `--bp-primary-soft`: `#173529`
-- `--bp-blue`: `#86B5E2`
-- `--bp-amber`: `#E4B861`
 - `--bp-danger`: `#E58B82`
 - `--bp-ring`: `#65D09B`
 - `--bp-on-primary`: `#0C1410`
@@ -96,8 +92,8 @@ Base unit is 4px.
 
 Do:
 - Keep the interface compact and scannable.
-- Use green only for decisions, selection, and totals.
-- Use blue only for document actions.
+- Use the primary green family for decisions, selection, documents, and totals.
+- Reserve red for destructive actions only; do not introduce another feature accent.
 
 Don't:
 - Do not use purple gradients, glow backgrounds, or beige luxury cues.

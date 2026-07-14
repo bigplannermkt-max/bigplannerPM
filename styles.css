@@ -9,8 +9,8 @@
   --green-dark: #164b3a;
   --green-soft: #eef7f2;
   --panel-soft: #f8faf7;
-  --gold: #b7822d;
-  --blue: #315f93;
+  --gold: var(--green);
+  --blue: var(--green);
   --red: #ad4b42;
   --shadow: 0 18px 50px rgba(25, 42, 34, 0.1);
   --sticky-bg: rgba(247, 248, 244, 0.94);
@@ -49,8 +49,8 @@ body {
     --green-dark: #9be3bd;
     --green-soft: #163228;
     --panel-soft: #131c18;
-    --gold: #e2b766;
-    --blue: #82acd9;
+    --gold: var(--green);
+    --blue: var(--green);
     --red: #e0887f;
     --shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
     --sticky-bg: rgba(16, 22, 18, 0.94);
@@ -3191,8 +3191,8 @@ body.theme-dark {
   --green-dark: #9be3bd;
   --green-soft: #163228;
   --panel-soft: #131c18;
-  --gold: #e2b766;
-  --blue: #82acd9;
+  --gold: var(--green);
+  --blue: var(--green);
   --red: #e0887f;
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
   --sticky-bg: rgba(16, 22, 18, 0.94);
@@ -3216,8 +3216,8 @@ body.theme-light {
   --green-dark: #164b3a;
   --green-soft: #eef7f2;
   --panel-soft: #f8faf7;
-  --gold: #b7822d;
-  --blue: #315f93;
+  --gold: var(--green);
+  --blue: var(--green);
   --red: #ad4b42;
   --shadow: 0 18px 50px rgba(25, 42, 34, 0.1);
   --sticky-bg: rgba(247, 248, 244, 0.94);
@@ -3972,8 +3972,8 @@ body.is-document-printing .document-output.is-printing .proposal-grand-total {
   --loopy-green-2: #0f533d;
   --loopy-mint: #e7f6ef;
   --loopy-mint-strong: #d5efe3;
-  --loopy-blue: #285f8f;
-  --loopy-gold: #b7832d;
+  --loopy-blue: var(--loopy-green);
+  --loopy-gold: var(--loopy-green);
   --loopy-red: #a3433d;
   --loopy-radius: 8px;
   --paper: var(--loopy-bg);
@@ -4620,8 +4620,8 @@ body.theme-dark {
   --loopy-green-2: #9be3bd;
   --loopy-mint: #173328;
   --loopy-mint-strong: #1d4636;
-  --loopy-blue: #82acd9;
-  --loopy-gold: #e2b766;
+  --loopy-blue: var(--loopy-green);
+  --loopy-gold: var(--loopy-green);
   --loopy-red: #e0887f;
   --paper: var(--loopy-bg);
   --panel: var(--loopy-card-solid);
@@ -4897,8 +4897,6 @@ body.is-low-vision .summary-tile strong {
   --bp-primary: #11684E;
   --bp-primary-strong: #0A4938;
   --bp-primary-soft: #E2F3EA;
-  --bp-blue: #285F8F;
-  --bp-amber: #B27928;
   --bp-danger: #A6403A;
   --bp-ring: #74B99A;
   --bp-on-primary: #FFFFFF;
@@ -4929,8 +4927,11 @@ body.is-low-vision .summary-tile strong {
   --green-dark: var(--bp-primary-strong);
   --green-soft: var(--bp-primary-soft);
   --panel-soft: var(--bp-surface-muted);
-  --gold: var(--bp-amber);
-  --blue: var(--bp-blue);
+  /* Legacy aliases stay aligned to the single primary family. */
+  --gold: var(--bp-primary);
+  --blue: var(--bp-primary);
+  --loopy-blue: var(--bp-primary);
+  --loopy-gold: var(--bp-primary);
   --red: var(--bp-danger);
   --shadow: var(--bp-shadow-sm);
   --sticky-bg: rgba(243, 245, 240, 0.9);
@@ -4954,8 +4955,6 @@ body.theme-dark {
   --bp-primary: #65D09B;
   --bp-primary-strong: #9BE3BD;
   --bp-primary-soft: #173529;
-  --bp-blue: #86B5E2;
-  --bp-amber: #E4B861;
   --bp-danger: #E58B82;
   --bp-ring: #65D09B;
   --bp-on-primary: #0C1410;
@@ -4964,6 +4963,8 @@ body.theme-dark {
   --bp-shadow-focus: 0 0 0 3px rgba(101, 208, 155, 0.2);
   --sticky-bg: rgba(12, 20, 16, 0.9);
   --danger-soft: #361B19;
+  --loopy-blue: var(--bp-primary);
+  --loopy-gold: var(--bp-primary);
 }
 
 body {
@@ -5004,7 +5005,7 @@ body.theme-dark {
 
 .topbar::before {
   width: var(--bp-space-1);
-  background: linear-gradient(180deg, var(--bp-primary), var(--bp-blue));
+  background: var(--bp-primary);
 }
 
 .topbar::after {
@@ -5589,7 +5590,7 @@ button:focus-visible {
 }
 
 .package-card > strong {
-  color: var(--bp-blue);
+  color: var(--bp-primary-strong);
 }
 
 .pm-task-phase__list {
@@ -5613,6 +5614,25 @@ button:focus-visible {
 .pm-task-phase-subtotal,
 .option-status {
   border-radius: 999px;
+}
+
+.option-status[data-status="recommended"],
+.option-status[data-status="optional"] {
+  color: var(--bp-primary-strong) !important;
+  background: var(--bp-primary-soft) !important;
+  border: 1px solid var(--bp-primary) !important;
+}
+
+.success-rule-caution {
+  color: var(--bp-primary-strong) !important;
+  background: var(--bp-primary-soft) !important;
+  border-color: var(--bp-primary) !important;
+}
+
+.success-rule-badges span {
+  color: var(--bp-primary-strong) !important;
+  background: var(--bp-primary-soft) !important;
+  border-color: var(--bp-primary) !important;
 }
 
 .pm-task-card strong small {
@@ -5699,9 +5719,17 @@ button:focus-visible {
 
 .document-action-card.is-active {
   color: var(--bp-on-primary);
-  background: var(--bp-blue);
-  border-color: var(--bp-blue);
+  background: var(--bp-primary);
+  border-color: var(--bp-primary);
   box-shadow: var(--bp-shadow-sm);
+}
+
+.document-action-card.proposal-generate.is-active,
+.document-action-card.estimate-generate.is-active,
+.document-action-card.scope-generate.is-active,
+.document-action-card.contract-generate.is-active {
+  background: var(--bp-primary) !important;
+  border-color: var(--bp-primary) !important;
 }
 
 .document-action-card.is-active strong,

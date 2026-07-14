@@ -879,7 +879,9 @@ function renderPaymentAllocation(card) {
   const parts = getPaymentRateParts(card);
   const total = parts.reduce((sum, part) => sum + clampPercent(readNumber(part.input)), 0) || 100;
   let cumulative = 0;
-  const colors = ["#1f6f54", "#4f86a8", "#8a6f2a", "#6f8f45", "#7d6a9a", "#9a6748", "#48556a", "#2f7c83"];
+  const colors = [100, 94, 88, 82, 76, 70, 64, 58].map(
+    (strength) => `color-mix(in srgb, var(--bp-primary) ${strength}%, var(--bp-surface))`
+  );
   const segments = parts
     .map((part, index) => {
       const rate = clampPercent(readNumber(part.input));
